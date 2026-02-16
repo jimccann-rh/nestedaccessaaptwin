@@ -67,6 +67,14 @@
         msg: "Twingate API key is set ({{ (twingate_api_key | trim | length) }} characters)."
 
   tasks:
+    - name: Sanitize csv_line (remove echo wrapper if present)
+      ansible.builtin.set_fact:
+        csv_line: "{{ csv_line | regex_replace(\"^\\\\s*echo\\\\s+['\\\"](.+)['\\\"]\\\\s*(>>?\\\\s*.+)?$\", '\\\\1') }}"
+      when:
+        - csv_line is defined
+        - csv_line | default('') | length > 0
+        - csv_line | regex_search("^\\\\s*echo\\\\s+")
+
     - name: Check if CSV file exists
       ansible.builtin.stat:
         path: "{{ csv_path }}"

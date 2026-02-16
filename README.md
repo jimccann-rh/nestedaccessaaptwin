@@ -81,6 +81,9 @@ The workflow supports two input methods with automatic fallback:
    - Useful for single user provisioning or scripting
    - When provided, the CSV file is ignored (even if it exists)
    - Automatically used if CSV file is not found
+   - **Auto-sanitization**: Can paste echo commands directly - the playbook automatically strips wrappers:
+     - Input: `echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DPP-00000' >> file.csv`
+     - Cleaned: `etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DPP-00000`
 
 **Note:** If the CSV file is not found and no inline CSV data is provided, the playbook will fail with a clear error message explaining both input options.
 
@@ -355,6 +358,13 @@ aap_template_names:
 csv_line: 'username,email,DEVQE,First,Last,GroupName,DPP-00000'
 aap_template_names: ["Template1","Template2","Template3"]
 ```
+
+**Format 4: Paste from echo command (auto-sanitized)**
+```yaml
+csv_line: "echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DPP-00000' >> username-devqe.csv"
+aap_template_names: ["Template1","Template2","Template3"]
+```
+The playbook automatically strips the `echo '...'` wrapper and `>> filename` redirection, leaving just the CSV data.
 
 **Important:**
 - The `csv_line` variable will automatically be passed to both the Twingate playbook and the AAP tasks. You only need to set it once in the job template extra variables - you do NOT need to set both `csv_line` and `twingate_csv_line`.

@@ -244,6 +244,14 @@ You can pass a single CSV line via `-e csv_line='...'` instead of using a file. 
 
 Both `twingate_create_users.yml` and `main.yml` support this via the `csv_line` variable. When provided, the CSV file is ignored.
 
+**Auto-sanitization:**
+The playbooks automatically strip common shell command wrappers from `csv_line`, allowing you to paste commands directly from scripts:
+- Detects: `echo 'data' >> filename` or `echo "data" > filename`
+- Extracts: Just the CSV data between quotes
+- Example: Input `echo 'etang,etang@redhat.com,...' >> file.csv` → Output `etang,etang@redhat.com,...`
+- Implementation: Uses `regex_replace` to remove `echo`, quotes, and redirection operators
+- Only sanitizes if the pattern is detected (doesn't affect normal CSV input)
+
 **Input Validation:**
 The playbooks now validate CSV input before processing:
 - If `csv_line` is provided, it takes priority (CSV file is ignored)

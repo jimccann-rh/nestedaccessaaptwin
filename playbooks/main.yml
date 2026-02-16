@@ -45,6 +45,15 @@
     # Note: csv_line and aap_template_names not defined here to allow passthrough from -e
 
   tasks:
+    - name: Sanitize csv_line (remove echo wrapper if present)
+      ansible.builtin.set_fact:
+        csv_line: "{{ csv_line | regex_replace(\"^\\\\s*echo\\\\s+['\\\"](.+)['\\\"]\\\\s*(>>?\\\\s*.+)?$\", '\\\\1') }}"
+      when:
+        - csv_line is defined
+        - csv_line | default('') | length > 0
+        - csv_line | regex_search("^\\\\s*echo\\\\s+")
+      tags: [twingate, aap, access]
+
     - name: Check if CSV file exists
       ansible.builtin.stat:
         path: "{{ csv_path }}"
