@@ -2,9 +2,15 @@
 # Task file for granting AAP access to a single user
 # Called in a loop from main.yml
 
-- name: Parse template list
+- name: Parse template list from string (comma-separated)
   ansible.builtin.set_fact:
-    _templates: "{{ (aap_template_names is string) | ternary(aap_template_names.split(','), aap_template_names) | map('trim') | list }}"
+    _templates: "{{ aap_template_names.split(',') | map('trim') | list }}"
+  when: aap_template_names is string
+
+- name: Parse template list from list/array
+  ansible.builtin.set_fact:
+    _templates: "{{ aap_template_names | map('trim') | list }}"
+  when: aap_template_names is not string
 
 - name: Grant execute role to {{ aap_username }} on job template(s)
   awx.awx.role:
