@@ -329,7 +329,24 @@ The playbooks automatically detect and use a custom credential for Twingate:
 2. AAP custom credential `custom_token` (for AAP job execution)
 3. `.env` file fallback (for local runs)
 
-**Summary:** Just attach two credentials to your AAP job template (AAP platform credential + Twingate custom credential), and the playbooks handle everything automatically. No extra variables needed.
+**Summary:** Just attach two credentials to your AAP job template (AAP platform credential + Twingate custom credential), and the playbooks handle everything automatically. No extra variables needed for credentials.
+
+**AAP Job Template Extra Variables:**
+
+When configuring the AAP job template, you can set these extra variables:
+
+```yaml
+csv_line: 'username,email,DEVQE,First,Last,GroupName,DPP-00000'
+aap_template_names: 'Template1,Template2,Template3'
+```
+
+**Important:** The `csv_line` variable will automatically be passed to both the Twingate playbook and the AAP tasks. You only need to set it once in the job template extra variables - you do NOT need to set both `csv_line` and `twingate_csv_line`.
+
+Alternatively, you can use a CSV file by setting:
+```yaml
+csv_path: '/path/to/users.csv'
+aap_template_names: 'Template1,Template2,Template3'
+```
 
 ## Customization
 

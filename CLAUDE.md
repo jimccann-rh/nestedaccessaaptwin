@@ -100,6 +100,16 @@ The project uses a master orchestration approach:
 
 This is implemented in `playbooks/main.yml` which imports the Twingate playbook and then runs AAP tasks in batch mode.
 
+**Variable Passthrough:**
+The playbooks are designed to accept variables from `-e` command-line arguments or AAP job extra variables:
+- `csv_line` - Passed from `main.yml` to `twingate_create_users.yml` automatically
+- `csv_path` - Can be overridden at any level
+- `aap_template_names` - Used by `main.yml` for AAP tasks
+
+Important: Both `main.yml` and `twingate_create_users.yml` do NOT define default values for `csv_line` and `aap_template_names` in their vars sections. This allows these variables to be passed through from `-e` arguments or AAP job configuration without being shadowed by hardcoded defaults. All conditions use `| default('')` to handle undefined variables gracefully.
+
+This design ensures that when running on AAP, you only need to set `csv_line` once via extra variables, and it will be available to both the Twingate playbook and the AAP tasks.
+
 ### Configuration Management
 
 **Environment-based Configuration:**
