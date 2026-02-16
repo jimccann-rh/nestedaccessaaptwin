@@ -234,6 +234,13 @@ You can pass a single CSV line via `-e csv_line='...'` instead of using a file. 
 
 Both `twingate_create_users.yml` and `main.yml` support this via the `csv_line` variable. When provided, the CSV file is ignored.
 
+**Input Validation:**
+The playbooks now validate CSV input before processing:
+- If `csv_line` is provided, it takes priority (CSV file is ignored)
+- If `csv_line` is not provided, the playbook checks if the CSV file exists
+- If neither exists, the playbook fails with a clear error message explaining both input options
+- This prevents confusing file-not-found errors during task execution
+
 **CSV with Headers:**
 If you need to support CSV with headers:
 1. Set `twingate_csv_headerless: false` in `vars/twingate_defaults.yml`
@@ -242,11 +249,24 @@ If you need to support CSV with headers:
 
 ### Error Handling
 
-Both integrations use `assert` tasks to validate inputs:
-- Twingate: Validates API key is set
-- AAP: Validates template names and username are provided
+The playbooks use `assert` tasks to validate inputs and fail early with clear messages:
 
-Tasks will fail early with clear messages if requirements aren't met.
+**Twingate Validation:**
+- API key is set (checks environment variable, AAP custom credential, or .env file)
+- CSV input exists (either file or inline data)
+
+**AAP Validation:**
+- Template names are provided
+- Username is provided (for standalone playbook)
+- CSV input exists for batch operations (either file or inline data)
+
+**CSV Input Validation:**
+Both `twingate_create_users.yml` and `main.yml` check for CSV input before processing:
+1. If inline CSV data (`csv_line`) is provided, use it
+2. If not, check if the CSV file exists using `ansible.builtin.stat`
+3. If neither exists, fail with a message showing both input options
+
+This prevents confusing errors during task execution and guides users to provide input correctly.
 
 ## File Organization
 

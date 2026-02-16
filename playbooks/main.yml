@@ -41,12 +41,35 @@
     aap_template_names: ""  # Comma-separated template names
 
   tasks:
+    - name: Check if CSV file exists
+      ansible.builtin.stat:
+        path: "{{ csv_path }}"
+      register: aap_csv_file_stat
+      when:
+        - aap_template_names | length > 0
+        - csv_line | length == 0
+      tags: [aap, access]
+
+    - name: Validate AAP input source
+      ansible.builtin.assert:
+        that:
+          - (csv_line | length > 0) or (aap_csv_file_stat.stat.exists | default(false))
+        fail_msg: |
+          No CSV input found for AAP access grants. Please provide either:
+          - A CSV file at: {{ csv_path }}
+          - Or inline CSV data via: -e 'csv_line=username,email,DEVQE,First,Last,GroupName,DPP-00000'
+      when:
+        - aap_template_names | length > 0
+        - csv_line | length == 0
+      tags: [aap, access]
+
     - name: Read CSV file
       ansible.builtin.set_fact:
         csv_lines: "{{ lookup('file', csv_path).split('\n') }}"
       when:
         - aap_template_names | length > 0
         - csv_line | length == 0
+        - aap_csv_file_stat.stat.exists
       tags: [aap, access]
 
     - name: Use inline CSV line

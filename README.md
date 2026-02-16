@@ -69,16 +69,20 @@ username,email@example.com,DEVQE,First,Last,IBMC-groupname,DPP-00000
 
 ### Input Methods
 
-The workflow supports two input methods:
+The workflow supports two input methods with automatic fallback:
 
 1. **CSV File** (default) - Process multiple users from a file
    - Default: `data/usernames-devqe.csv`
    - Override with `-e "csv_path=/path/to/file.csv"`
+   - If the file doesn't exist, the playbook will fail with a helpful error message
 
 2. **Inline CSV Line** - Process a single user from command line
    - Pass with `-e 'csv_line=username,email,DEVQE,First,Last,GroupName,DPP-00000'`
    - Useful for single user provisioning or scripting
-   - When provided, the CSV file is ignored
+   - When provided, the CSV file is ignored (even if it exists)
+   - Automatically used if CSV file is not found
+
+**Note:** If the CSV file is not found and no inline CSV data is provided, the playbook will fail with a clear error message explaining both input options.
 
 ### 4. Run Complete Workflow
 
