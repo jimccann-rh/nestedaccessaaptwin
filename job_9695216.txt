@@ -1,0 +1,264 @@
+
+PLAY [Twingate user creation] **************************************************
+
+TASK [Debug csv_line before sanitization] **************************************
+ok: [localhost] => {
+    "csv_line": "echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000' >> username-devqe.csv"
+}
+
+TASK [Detect if csv_line has echo wrapper] *************************************
+ok: [localhost]
+
+TASK [Extract CSV data from echo command (split by single quote)] **************
+ok: [localhost]
+
+TASK [Get second element (the actual CSV data)] ********************************
+ok: [localhost]
+
+TASK [Debug csv_line after sanitization] ***************************************
+ok: [localhost] => {
+    "csv_line": "echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000' >> username-devqe.csv"
+}
+
+TASK [Load Twingate API key from environment] **********************************
+skipping: [localhost]
+
+TASK [Load Twingate API key from AAP custom_token (for AAP job execution)] *****
+ok: [localhost]
+
+TASK [Read .env file] **********************************************************
+skipping: [localhost]
+
+TASK [Parse TWINGATE_API_KEY from .env] ****************************************
+skipping: [localhost]
+
+TASK [Require API key] *********************************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Confirm Twingate API key is set] *****************************************
+ok: [localhost] => {
+    "msg": "Twingate API key is set (134 characters)."
+}
+
+TASK [Check if CSV file exists] ************************************************
+skipping: [localhost]
+
+TASK [Validate input source] ***************************************************
+skipping: [localhost]
+
+TASK [Create users from CSV file and add to groups] ****************************
+skipping: [localhost]
+
+TASK [Create users from inline CSV line and add to groups] *********************
+included: /runner/project/tasks/twingate/create_users.yml for localhost
+
+TASK [Load users (from CSV or variable)] ***************************************
+[WARNING]: Collection community.general does not support Ansible version
+2.15.13
+included: /runner/project/playbooks/../tasks/twingate/load_users.yml for localhost
+
+TASK [Check CSV path, CSV line, or users list is provided] *********************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Load users from CSV file (with header)] **********************************
+skipping: [localhost]
+
+TASK [Load users from CSV file (headerless, Col2=email Col6=group)] ************
+skipping: [localhost]
+
+TASK [Build user list from CSV (header or headerless)] *************************
+skipping: [localhost]
+
+TASK [Build user list from inline CSV line(s) (Col2=email, Col6=group)] ********
+ok: [localhost] => (item=echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000' >> username-devqe.csv)
+
+TASK [Set user list from twingate_users variable] ******************************
+skipping: [localhost]
+
+TASK [De-duplicate user list by email (first wins)] ****************************
+ok: [localhost]
+
+TASK [Ensure at least one user to process] *************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Build group name -> ID map] **********************************************
+included: /runner/project/playbooks/../tasks/twingate/build_group_map.yml for localhost
+
+TASK [Reset groups list for pagination] ****************************************
+ok: [localhost]
+
+TASK [Fetch all Twingate groups (paginated)] ***********************************
+included: /runner/project/playbooks/../tasks/twingate/list_groups_page.yml for localhost
+
+TASK [Fetch groups page from Twingate] *****************************************
+ok: [localhost]
+
+TASK [Accumulate groups list] **************************************************
+ok: [localhost]
+
+TASK [Get next page of groups] *************************************************
+skipping: [localhost]
+
+TASK [Build group name to ID map (lowercase names)] ****************************
+ok: [localhost] => (item={'id': 'R3JvdXA6MzE1MzI=', 'name': 'Everyone'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MzE4MTI=', 'name': 'DEV'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MzE4MTM=', 'name': 'CI'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MzE4MTQ=', 'name': 'CIDEV'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MzE5MjA=', 'name': 'IBMC VPC BMS'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MTA5MDkw', 'name': 'IBMC-devqe'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MTM4NDc0', 'name': 'Nutanix'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MTcyMzYw', 'name': 'IBMC-cee'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MjE0MzQ5', 'name': 'IBMC-ci'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MjU3NTM2', 'name': 'AWS-devqe-flow'})
+ok: [localhost] => (item={'id': 'R3JvdXA6MjYyNjkx', 'name': 'IBMC-CI-splatbot'})
+ok: [localhost] => (item={'id': 'R3JvdXA6Mjg4MTIw', 'name': 'IBMC-vcsvirt'})
+
+TASK [Fetch all users (for resolving existing users by email)] *****************
+included: /runner/project/playbooks/../tasks/twingate/fetch_all_users.yml for localhost
+
+TASK [Reset users list for pagination] *****************************************
+ok: [localhost]
+
+TASK [Fetch all Twingate users (paginated)] ************************************
+included: /runner/project/playbooks/../tasks/twingate/fetch_users_page.yml for localhost
+
+TASK [Fetch users page from Twingate] ******************************************
+ok: [localhost]
+
+TASK [Accumulate users list] ***************************************************
+ok: [localhost]
+
+TASK [Get next page of users] **************************************************
+skipping: [localhost]
+
+TASK [Create Twingate user and add to group] ***********************************
+included: /runner/project/playbooks/../tasks/twingate/create_one_user.yml for localhost => (item={'email': 'etang@redhat.com', 'group': 'IBMC-devqe'})
+
+TASK [Create Twingate user (send invite)] **************************************
+ok: [localhost]
+
+TASK [Set user ID from create response] ****************************************
+skipping: [localhost]
+
+TASK [Resolve user ID by email from all users list (when user already existed)] ***
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTMwNTA=', 'email': 'jimccann@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTMzODg=', 'email': 'rvanderp@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTMzODk=', 'email': 'jcallen@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxNjk1ODc=', 'email': 'pphusey@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoyNzQ3NzI=', 'email': 'jsafrane@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoyNzc2NjE=', 'email': 'rbednar@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjo3MzU3MDM=', 'email': 'jvaldes@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjo4MzI2NzI=', 'email': 'weinliu@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjo4NzUzMTg=', 'email': 'xiaoyali@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjo5MTU1NDM=', 'email': 'sgao@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjo5MjEzNjU=', 'email': 'mpatlaso@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMDA4MDQx', 'email': 'efried@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMDI4NTYy', 'email': 'rhrmo@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMDQyOTc2', 'email': 'ddonati@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTEzMjc2', 'email': 'ngirard@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTE1MzQ4', 'email': 'mkowalsk@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTQwODk2', 'email': 'cblum@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTQyODA4', 'email': 'pbalogh@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTQzNzM4', 'email': 'etamir@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTQzNzQx', 'email': 'mhans@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTYxMDMw', 'email': 'hekumar@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTYzNjYy', 'email': 'mihuang@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTgwMTQw', 'email': 'pewang@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTgyNDMx', 'email': 'jshu@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTg1ODEw', 'email': 'wwei@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMTk0MDcy', 'email': 'eerez@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjA1MjE3', 'email': 'tzivkovi@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjA4ODA5', 'email': 'bmanzari@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjA4ODIy', 'email': 'vboulos@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjA4ODMx', 'email': 'dfajmon@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjExMDg5', 'email': 'datucker@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjI3NTU0', 'email': 'rrasouli@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjMwMDY1', 'email': 'anusaxen@redhat.com'}) 
+skipping: [localhost] => (item={'id': 'VXNlcjoxMjMxNzgz', 'email': 'jsuri@redhat.com'}) 
+ok: [localhost] => (item={'id': 'VXNlcjoxMjMzNzI5', 'email': 'etang@redhat.com'})
+
+TASK [Get group ID for current user (or mark not found)] ***********************
+ok: [localhost]
+
+TASK [Add user to Twingate group] **********************************************
+ok: [localhost]
+
+TASK [Record create-user result] ***********************************************
+ok: [localhost]
+
+TASK [Show create-user results] ************************************************
+ok: [localhost] => {
+    "msg": [
+        {
+            "email": "etang@redhat.com",
+            "group": "IBMC-devqe",
+            "group_error": null,
+            "group_ok": true,
+            "user_error": "A User with the email already exists.",
+            "user_id": "VXNlcjoxMjMzNzI5",
+            "user_ok": false
+        }
+    ]
+}
+
+PLAY [AAP Access Grant (batch mode)] *******************************************
+
+TASK [Debug csv_line before sanitization] **************************************
+ok: [localhost] => {
+    "csv_line": "echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000' >> username-devqe.csv"
+}
+
+TASK [Detect if csv_line has echo wrapper] *************************************
+ok: [localhost]
+
+TASK [Extract CSV data from echo command (split by single quote)] **************
+ok: [localhost]
+
+TASK [Get second element (the actual CSV data)] ********************************
+ok: [localhost]
+
+TASK [Debug csv_line after sanitization] ***************************************
+ok: [localhost] => {
+    "csv_line": "echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000' >> username-devqe.csv"
+}
+
+TASK [Check if CSV file exists] ************************************************
+skipping: [localhost]
+
+TASK [Validate AAP input source] ***********************************************
+skipping: [localhost]
+
+TASK [Read CSV file] ***********************************************************
+skipping: [localhost]
+
+TASK [Use inline CSV line] *****************************************************
+ok: [localhost]
+
+TASK [Extract usernames from CSV for AAP] **************************************
+ok: [localhost] => (item=echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000' >> username-devqe.csv)
+
+TASK [Grant AAP template execute access to all users] **************************
+included: /runner/project/playbooks/aap_grant_access_task.yml for localhost => (item=echo 'etang)
+
+TASK [Parse template list from string (comma-separated)] ***********************
+skipping: [localhost]
+
+TASK [Parse template list from list/array] *************************************
+ok: [localhost]
+
+TASK [Grant execute role to echo 'etang on job template(s)] ********************
+[WARNING]: You are using the awx version of this collection but connecting to
+Red Hat Ansible Automation Platform
+fatal: [localhost]: FAILED! => {"changed": false, "msg": "There were 1 missing items, missing items: [\\"echo 'etang\\"]"}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=41   changed=0    unreachable=0    failed=1    skipped=17   rescued=0    ignored=0   
