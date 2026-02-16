@@ -1,0 +1,14 @@
+---
+# Fetch all groups and build name (lowercase) -> id map into twingate_group_map
+- name: Reset groups list for pagination
+  ansible.builtin.set_fact:
+    twingate_groups_list: []
+
+- name: Fetch all Twingate groups (paginated)
+  ansible.builtin.include_tasks: list_groups_page.yml
+
+- name: Build group name to ID map (lowercase names)
+  ansible.builtin.set_fact:
+    twingate_group_map: "{{ twingate_group_map | default({}) | combine({ (item.name | trim | lower): item.id }) }}"
+  loop: "{{ twingate_groups_list }}"
+  when: item.name is defined and (item.name | trim | length > 0)

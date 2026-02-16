@@ -1,0 +1,60 @@
+---
+# Process one user: create (or get existing ID), then add to group if specified.
+# Expects: twingate_current_user = { email, group }, twingate_group_map, twingate_all_users_list.
+- name: Create Twingate user (send invite)
+  ansible.builtin.uri:
+    url: "{{ twingate_graphql_url }}"
+    method: POST
+    headers: "{{ twingate_headers }}"
+    body_format: json
+    body:
+      query: "{{ twingate_mutation_user_create }}"
+      variables:
+        email: "{{ twingate_current_user.email }}"
+        shouldSendInvite: true
+  register: create_resp
+
+- name: Set user ID from create response
+  ansible.builtin.set_fact:
+    twingate_current_user_id: "{{ create_resp.json.data.userCreate.entity.id }}"
+  when: create_resp.json.data.userCreate.entity is defined and create_resp.json.data.userCreate.entity
+
+- name: Resolve user ID by email from all users list (when user already existed)
+  ansible.builtin.set_fact:
+    twingate_current_user_id: "{{ item.id }}"
+  loop: "{{ twingate_all_users_list | default([]) }}"
+  when:
+    - not (create_resp.json.data.userCreate.entity is defined and create_resp.json.data.userCreate.entity)
+    - twingate_current_user_id is not defined or not twingate_current_user_id
+    - item.email is defined
+    - (item.email | lower) == (twingate_current_user.email | lower)
+
+- name: Get group ID for current user (or mark not found)
+  ansible.builtin.set_fact:
+    twingate_current_group_id: "{{ twingate_group_map[twingate_current_user.group | trim | lower] if ((twingate_current_user.group | trim | lower) in (twingate_group_map | default({}))) else '' }}"
+    twingate_group_not_found: "{{ (twingate_current_user.group | trim | length > 0) and ((twingate_current_user.group | trim | lower) not in (twingate_group_map | default({}))) }}"
+  when:
+    - twingate_current_user.group is defined
+    - (twingate_current_user.group | trim | length > 0)
+
+- name: Add user to Twingate group
+  ansible.builtin.uri:
+    url: "{{ twingate_graphql_url }}"
+    method: POST
+    headers: "{{ twingate_headers }}"
+    body_format: json
+    body:
+      query: "{{ twingate_mutation_group_update }}"
+      variables:
+        groupId: "{{ twingate_current_group_id }}"
+        addedUserIds:
+          - "{{ twingate_current_user_id }}"
+  register: group_resp
+  when:
+    - twingate_current_user_id is defined and twingate_current_user_id
+    - twingate_current_group_id is defined and (twingate_current_group_id | length > 0)
+
+- name: Record create-user result
+  ansible.builtin.set_fact:
+    twingate_create_results: "{{ (twingate_create_results | default([])) + [ { 'email': twingate_current_user.email, 'user_ok': create_resp.json.data.userCreate.ok, 'user_error': create_resp.json.data.userCreate.error | default(''), 'user_id': twingate_current_user_id | default(''), 'group': twingate_current_user.group | default(''), 'group_ok': (group_resp.json.data.groupUpdate.ok | default(false)) if (twingate_current_group_id is defined and (twingate_current_group_id | length > 0)) else (false if (twingate_group_not_found | default(false)) else none), 'group_error': (group_resp.json.data.groupUpdate.error | default('')) if (twingate_current_group_id is defined and (twingate_current_group_id | length > 0)) else ('Group not found by name: ' + twingate_current_user.group) if (twingate_group_not_found | default(false)) else '' } ] }}"
+  run_once: true

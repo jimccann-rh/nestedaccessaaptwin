@@ -1,0 +1,54 @@
+---
+# Set to true to display Twingate groups (default: false)
+twingate_list_groups: false
+
+# Twingate API endpoint (subdomain from your Twingate URL, e.g. acme.twingate.com -> acme)
+twingate_subdomain: "redhat"
+twingate_graphql_url: "https://{{ twingate_subdomain }}.twingate.com/api/graphql/"
+
+# GraphQL operations (used by uri tasks)
+twingate_headers:
+  X-API-KEY: "{{ twingate_api_key }}"
+  Content-Type: "application/json"
+
+# Queries and mutations
+twingate_query_groups: |
+  query Groups($first: Int, $after: String) {
+    groups(first: $first, after: $after) {
+      edges { node { id name } }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+
+twingate_query_users: |
+  query Users($first: Int, $after: String) {
+    users(first: $first, after: $after) {
+      edges { node { id email } }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+
+twingate_mutation_user_create: |
+  mutation UserCreate($email: String!, $shouldSendInvite: Boolean) {
+    userCreate(email: $email, shouldSendInvite: $shouldSendInvite) {
+      ok
+      error
+      entity { id email }
+    }
+  }
+
+twingate_mutation_group_update: |
+  mutation GroupUpdate($groupId: ID!, $addedUserIds: [ID!]) {
+    groupUpdate(id: $groupId, addedUserIds: $addedUserIds) {
+      ok
+      error
+      entity { id name }
+    }
+  }
+
+# Pagination page size
+twingate_page_size: 200
+
+# CSV format: set to true for headerless CSV where Col2=email, Col6=group
+# Example: kerboid,flast@email.com,DEVQE,First,Last,IBMC-devqe,DPP-00000
+twingate_csv_headerless: false

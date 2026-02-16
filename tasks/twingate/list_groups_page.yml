@@ -1,0 +1,22 @@
+---
+# Recursive task: fetch one page of groups (used by list_groups.yml)
+- name: Fetch groups page from Twingate
+  ansible.builtin.uri:
+    url: "{{ twingate_graphql_url }}"
+    method: POST
+    headers: "{{ twingate_headers }}"
+    body_format: json
+    body:
+      query: "{{ twingate_query_groups }}"
+      variables: "{{ { 'first': twingate_page_size } | combine({ 'after': twingate_groups_after_cursor }) if (twingate_groups_after_cursor | default('') | length > 0) else { 'first': twingate_page_size } }}"
+  register: groups_page
+
+- name: Accumulate groups list
+  ansible.builtin.set_fact:
+    twingate_groups_list: "{{ (twingate_groups_list | default([])) + (groups_page.json.data.groups.edges | map(attribute='node') | list) }}"
+
+- name: Get next page of groups
+  ansible.builtin.include_tasks: list_groups_page.yml
+  vars:
+    twingate_groups_after_cursor: "{{ groups_page.json.data.groups.pageInfo.endCursor | default('') }}"
+  when: groups_page.json.data.groups.pageInfo.hasNextPage | default(false) | bool

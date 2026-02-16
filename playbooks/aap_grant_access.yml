@@ -1,0 +1,80 @@
+---
+# Playbook: Grant user execution access to AAP job template(s)
+#
+# Adds a user to the Execute role on one or more job templates so they can
+# run the template without being able to modify it.
+#
+# Usage:
+#   ansible-playbook playbooks/grant_template_execute_access.yml \
+#     -e "template_name=vSphere-Nested-DEVQE-static" \
+#     -e "username=datucker"
+#
+# Multiple templates (comma-separated or list):
+#   ansible-playbook playbooks/grant_template_execute_access.yml \
+#     -e "template_names=vSphere-Nested-DEVQE-static,Another-Template" \
+#     -e "username=datucker"
+#
+# Or with extra vars file:
+#   ansible-playbook playbooks/grant_template_execute_access.yml -e @vars.yml
+#
+# CLI -e overrides environment variables. Optional env vars:
+#   AAP_TEMPLATE_NAME  - default template name
+#   AAP_GRANT_USER     - default username to grant
+
+- name: Grant user execution access to AAP job template(s)
+  hosts: localhost
+
+  gather_facts: false
+  collections:
+    - awx.awx
+
+  vars:
+    # Single template; from CLI -e or env AAP_TEMPLATE_NAME
+    template_name: "{{ lookup('env', 'AAP_TEMPLATE_NAME') | default('', true) }}"
+    # Or pass multiple: template_names: ["vSphere-Nested-DEVQE-static", "Other-Template"]
+    template_names: []
+    # Username to grant; from CLI -e or env AAP_GRANT_USER
+    username: "{{ lookup('env', 'AAP_GRANT_USER') | default('', true) }}"
+    # Controller auth vars come from inventory/group_vars/all.yml (reads from env)
+
+  tasks:
+    - name: Build list from comma-separated template_names string
+      set_fact:
+        _templates: "{{ template_names.split(',') | map('trim') | list }}"
+      when: template_names is string and template_names | trim | length > 0
+
+    - name: Build list from template_names list
+      set_fact:
+        _templates: "{{ template_names }}"
+      when: template_names is sequence and template_names is not string and template_names | length > 0
+
+    - name: Build list from single template_name
+      set_fact:
+        _templates: "{{ [template_name] }}"
+      when: template_name | trim | length > 0 and _templates is not defined
+
+    - name: Validate input parameters
+      assert:
+        that:
+          - _templates | length > 0
+          - _templates[0] | length > 0
+          - username | length > 0
+        fail_msg: "Provide template_name (or template_names) and username. Example: -e template_name=vSphere-Nested-DEVQE-static -e username=datucker"
+        quiet: true
+
+    - name: Grant execute role to user on job template(s)
+      awx.awx.role:
+        role: execute
+        job_templates: "{{ _templates }}"
+        users:
+          - "{{ username }}"
+        state: present
+        controller_host: "{{ controller_host }}"
+        controller_oauthtoken: "{{ controller_token | default(omit) }}"
+        controller_username: "{{ controller_username | default(omit) }}"
+        controller_password: "{{ controller_password | default(omit) }}"
+        validate_certs: "{{ controller_verify_ssl }}"
+
+    - name: Summary
+      debug:
+        msg: "Granted execute access for user '{{ username }}' on template(s): {{ _templates | join(', ') }}"

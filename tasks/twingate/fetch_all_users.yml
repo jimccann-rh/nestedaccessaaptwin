@@ -1,0 +1,8 @@
+---
+# Fetch all Twingate users (paginated) into twingate_all_users_list
+- name: Reset users list for pagination
+  ansible.builtin.set_fact:
+    twingate_all_users_list: []
+
+- name: Fetch all Twingate users (paginated)
+  ansible.builtin.include_tasks: fetch_users_page.yml

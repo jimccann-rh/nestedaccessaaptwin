@@ -1,0 +1,23 @@
+---
+# List all Twingate groups (paginated). Sets twingate_groups_list and prints it.
+- name: Reset groups list for pagination
+  ansible.builtin.set_fact:
+    twingate_groups_list: []
+
+- name: Fetch all Twingate groups (paginated)
+  ansible.builtin.include_tasks: list_groups_page.yml
+
+- name: Sort groups by name and show
+  ansible.builtin.set_fact:
+    twingate_groups_sorted: "{{ twingate_groups_list | sort(attribute='name') }}"
+
+- name: Display Twingate groups
+  ansible.builtin.debug:
+    msg: "{{ twingate_groups_sorted | map(attribute='name') | list }}"
+  run_once: true
+
+- name: Show groups table (Name / Id)
+  ansible.builtin.debug:
+    msg: "{{ item.name }} ({{ item.id }})"
+  loop: "{{ twingate_groups_sorted }}"
+  run_once: true

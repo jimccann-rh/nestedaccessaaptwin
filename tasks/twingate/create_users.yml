@@ -1,0 +1,24 @@
+---
+# Create Twingate users from twingate_users_list and optionally add to groups.
+# Requires: load_users.yml (sets twingate_users_list), build_group_map.yml, fetch_all_users.yml.
+- name: Load users (from CSV or variable)
+  ansible.builtin.include_tasks: load_users.yml
+
+- name: Build group name -> ID map
+  ansible.builtin.include_tasks: build_group_map.yml
+
+- name: Fetch all users (for resolving existing users by email)
+  ansible.builtin.include_tasks: fetch_all_users.yml
+
+- name: Create Twingate user and add to group
+  ansible.builtin.include_tasks: create_one_user.yml
+  loop: "{{ twingate_users_list }}"
+  loop_control:
+    loop_var: twingate_current_user
+  when: twingate_users_list is defined and twingate_users_list | length > 0
+
+- name: Show create-user results
+  ansible.builtin.debug:
+    msg: "{{ twingate_create_results | default([]) }}"
+  run_once: true
+  when: twingate_create_results is defined

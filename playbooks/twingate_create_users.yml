@@ -1,0 +1,82 @@
+---
+# Playbook: Create Twingate users from CSV
+#
+# Creates users in Twingate and assigns them to groups based on CSV input.
+# This is the first step before granting AAP access.
+#
+# Usage:
+#   ansible-playbook playbooks/twingate_create_users.yml \
+#     -e "csv_path={{ playbook_dir }}/../data/usernames-devqe.csv"
+#
+# API key options (priority order):
+#   1. Set TWINGATE_API_KEY environment variable (for CLI runs)
+#   2. Use custom_token from AAP custom credential (for AAP job execution)
+#   3. Read from .env file (fallback for CLI runs)
+
+- name: Twingate user creation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - ../vars/twingate_defaults.yml
+
+  vars:
+    # CSV path - can be overridden
+    csv_path: "{{ playbook_dir }}/../data/usernames-devqe.csv"
+    # CSV line - single line to process instead of file
+    csv_line: ""
+
+  pre_tasks:
+    - name: Load Twingate API key from environment
+      ansible.builtin.set_fact:
+        twingate_api_key: "{{ lookup('env', 'TWINGATE_API_KEY') }}"
+      when: lookup('env', 'TWINGATE_API_KEY') | length > 0
+
+    - name: Load Twingate API key from AAP custom_token (for AAP job execution)
+      ansible.builtin.set_fact:
+        twingate_api_key: "{{ custom_token }}"
+      when:
+        - twingate_api_key is not defined or twingate_api_key | length == 0
+        - custom_token is defined
+        - custom_token | length > 0
+
+    - name: Load Twingate API key from .env file if not in environment
+      block:
+        - name: Read .env file
+          ansible.builtin.set_fact:
+            env_contents: "{{ lookup('file', playbook_dir + '/../.env', errors='ignore') }}"
+          when: twingate_api_key is not defined or twingate_api_key | length == 0
+
+        - name: Parse TWINGATE_API_KEY from .env
+          ansible.builtin.set_fact:
+            twingate_api_key: "{{ env_contents | regex_search('TWINGATE_API_KEY=(.+)', '\\1') | first | default('') }}"
+          when:
+            - env_contents is defined
+            - env_contents | length > 0
+            - twingate_api_key is not defined or twingate_api_key | length == 0
+      when: twingate_api_key is not defined or twingate_api_key | length == 0
+
+    - name: Require API key
+      ansible.builtin.assert:
+        that: twingate_api_key is defined and (twingate_api_key | trim | length > 0)
+        fail_msg: "twingate_api_key is not set. Set TWINGATE_API_KEY in the environment, in .env file, or pass -e twingate_api_key=..."
+
+    - name: Confirm Twingate API key is set
+      ansible.builtin.debug:
+        msg: "Twingate API key is set ({{ (twingate_api_key | trim | length) }} characters)."
+
+  tasks:
+    - name: Create users from CSV file and add to groups
+      ansible.builtin.include_tasks: ../tasks/twingate/create_users.yml
+      vars:
+        twingate_csv_path: "{{ csv_path }}"
+        twingate_csv_headerless: true
+      when: csv_line | length == 0
+
+    - name: Create users from inline CSV line and add to groups
+      ansible.builtin.include_tasks: ../tasks/twingate/create_users.yml
+      vars:
+        twingate_csv_line: "{{ csv_line }}"
+        twingate_csv_headerless: true
+      when: csv_line | length > 0

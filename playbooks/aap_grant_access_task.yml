@@ -1,0 +1,24 @@
+---
+# Task file for granting AAP access to a single user
+# Called in a loop from main.yml
+
+- name: Parse template list
+  ansible.builtin.set_fact:
+    _templates: "{{ aap_template_names.split(',') | map('trim') | list }}"
+
+- name: Grant execute role to {{ aap_username }} on job template(s)
+  awx.awx.role:
+    role: execute
+    job_templates: "{{ _templates }}"
+    users:
+      - "{{ aap_username }}"
+    state: present
+    controller_host: "{{ controller_host }}"
+    controller_oauthtoken: "{{ controller_token | default(omit) }}"
+    controller_username: "{{ controller_username | default(omit) }}"
+    controller_password: "{{ controller_password | default(omit) }}"
+    validate_certs: "{{ controller_verify_ssl }}"
+
+- name: Log access grant
+  ansible.builtin.debug:
+    msg: "Granted execute access for '{{ aap_username }}' on template(s): {{ _templates | join(', ') }}"

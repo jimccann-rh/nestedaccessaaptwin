@@ -1,0 +1,81 @@
+---
+# Master playbook: Twingate + AAP Access Provisioning
+#
+# This playbook orchestrates the complete user provisioning workflow:
+# 1. Create users in Twingate from CSV
+# 2. Grant AAP job template execute access to those users
+#
+# Prerequisites:
+#   - TWINGATE_API_KEY environment variable set
+#   - TOWER_HOST, TOWER_OAUTH_TOKEN (or TOWER_USERNAME/TOWER_PASSWORD) environment variables set
+#   - CSV file with user data (default: data/usernames-devqe.csv)
+#   - AAP template names configured
+#
+# Usage:
+#   export TWINGATE_API_KEY=your_twingate_key
+#   export TOWER_HOST=https://your-aap.com
+#   export TOWER_OAUTH_TOKEN=your_aap_token
+#
+#   ansible-playbook playbooks/main.yml \
+#     -e "csv_path={{ playbook_dir }}/../data/usernames-devqe.csv" \
+#     -e "aap_template_names=Template1,Template2"
+#
+# Or run individual components:
+#   ansible-playbook playbooks/twingate_create_users.yml
+#   ansible-playbook playbooks/aap_grant_access.yml -e "username=user@example.com" -e "template_name=MyTemplate"
+
+- name: Twingate User Creation
+  import_playbook: twingate_create_users.yml
+  tags: [twingate, users]
+
+- name: AAP Access Grant (batch mode)
+  hosts: localhost
+  gather_facts: false
+  collections:
+    - awx.awx
+
+  vars:
+    # These should be provided via -e or environment
+    csv_path: "{{ playbook_dir }}/../data/usernames-devqe.csv"
+    csv_line: ""  # Single CSV line to process instead of file
+    aap_template_names: ""  # Comma-separated template names
+
+  tasks:
+    - name: Read CSV file
+      ansible.builtin.set_fact:
+        csv_lines: "{{ lookup('file', csv_path).split('\n') }}"
+      when:
+        - aap_template_names | length > 0
+        - csv_line | length == 0
+      tags: [aap, access]
+
+    - name: Use inline CSV line
+      ansible.builtin.set_fact:
+        csv_lines: "{{ [csv_line] }}"
+      when:
+        - aap_template_names | length > 0
+        - csv_line | length > 0
+      tags: [aap, access]
+
+    - name: Extract usernames from CSV for AAP
+      ansible.builtin.set_fact:
+        aap_usernames: "{{ aap_usernames | default([]) + [item.split(',')[0]] }}"
+      loop: "{{ csv_lines }}"
+      when:
+        - aap_template_names | length > 0
+        - csv_lines is defined
+        - item | length > 0
+        - item.split(',') | length > 0
+        - item.split(',')[0] | length > 0
+      tags: [aap, access]
+
+    - name: Grant AAP template execute access to all users
+      ansible.builtin.include_tasks: aap_grant_access_task.yml
+      loop: "{{ aap_usernames }}"
+      loop_control:
+        loop_var: aap_username
+      when:
+        - aap_template_names | length > 0
+        - aap_usernames is defined
+        - aap_usernames | length > 0
+      tags: [aap, access]

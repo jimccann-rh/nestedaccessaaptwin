@@ -1,0 +1,78 @@
+---
+# Load users from CSV, CSV line(s), or variable twingate_users.
+# Sets twingate_users_list to [ { email, group }, ... ] (group optional).
+#
+# Sources (one required):
+# - twingate_csv_line: inline CSV text via -e (headerless: Col2=email, Col6=group).
+#   Example: -e 'twingate_csv_line=kerboid,flast@email.com,DEVQE,First,Last,IBMC-devqe,DPP-00000'
+# - twingate_csv_path: path to CSV file (with header or twingate_csv_headerless: true).
+# - twingate_users: list of { email, group } dicts.
+- name: Check CSV path, CSV line, or users list is provided
+  ansible.builtin.assert:
+    that:
+      - (twingate_csv_path is defined and twingate_csv_path | length > 0) or (twingate_users is defined and twingate_users | length > 0) or (twingate_csv_line is defined and twingate_csv_line | trim | length > 0)
+    fail_msg: "Set twingate_csv_path, twingate_csv_line (inline CSV text), or twingate_users"
+
+- name: Load users from CSV file (with header)
+  community.general.read_csv:
+    path: "{{ twingate_csv_path }}"
+    dialect: excel
+  register: twingate_csv_content
+  when:
+    - twingate_csv_path is defined and twingate_csv_path | length > 0
+    - not (twingate_csv_headerless | default(false) | bool)
+  run_once: true
+
+- name: Load users from CSV file (headerless, Col2=email Col6=group)
+  community.general.read_csv:
+    path: "{{ twingate_csv_path }}"
+    dialect: excel
+    fieldnames: ['Col1', 'Col2', 'Col3', 'Col4', 'Col5', 'Col6', 'Col7', 'Col8']
+  register: twingate_csv_content
+  when:
+    - twingate_csv_path is defined and twingate_csv_path | length > 0
+    - twingate_csv_headerless | default(false) | bool
+  run_once: true
+
+- name: Build user list from CSV (header or headerless)
+  ansible.builtin.set_fact:
+    twingate_users_list: "{{ (twingate_users_list | default([])) + [ { 'email': _email | trim, 'group': _group | trim } ] }}"
+  loop: "{{ twingate_csv_content.list | default([]) }}"
+  when:
+    - twingate_csv_content is defined
+    - _email | length > 0
+  vars:
+    _email: "{{ (item.Email | default(item.email) | default(item.Col2 | default(''))) | trim }}"
+    _group: "{{ (item.Group | default(item.GroupName) | default(item.group) | default(item.Col6 | default(''))) | trim }}"
+
+- name: Build user list from inline CSV line(s) (Col2=email, Col6=group)
+  ansible.builtin.set_fact:
+    twingate_users_list: "{{ (twingate_users_list | default([])) + [ { 'email': _email | trim, 'group': _group | trim } ] }}"
+  loop: "{{ (twingate_csv_line | trim).split('\n') | default([]) }}"
+  when:
+    - twingate_csv_line is defined and (twingate_csv_line | trim | length > 0)
+    - (_line | trim) | length > 0
+    - (_email | trim) | length > 0
+  vars:
+    _line: "{{ item | trim }}"
+    _cols: "{{ _line.split(',') }}"
+    _email: "{{ _cols[1] if (_cols | length > 1) else '' }}"
+    _group: "{{ _cols[5] if (_cols | length > 5) else '' }}"
+
+- name: Set user list from twingate_users variable
+  ansible.builtin.set_fact:
+    twingate_users_list: "{{ twingate_users | map('combine', [{'email': item.email | default(item.Email) | trim, 'group': (item.group | default(item.Group) | default('')) | trim}]) | list }}"
+  when: twingate_users is defined and twingate_users | length > 0 and (twingate_csv_path is not defined or twingate_csv_path | length == 0) and (twingate_csv_line is not defined or twingate_csv_line | trim | length == 0)
+  run_once: true
+
+- name: De-duplicate user list by email (first wins)
+  ansible.builtin.set_fact:
+    twingate_users_list: "{{ twingate_users_list | unique(attribute='email') | list }}"
+  when: twingate_users_list is defined
+  run_once: true
+
+- name: Ensure at least one user to process
+  ansible.builtin.assert:
+    that: twingate_users_list is defined and twingate_users_list | length > 0
+    fail_msg: "No users found in CSV or twingate_users"
+  run_once: true

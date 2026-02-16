@@ -1,0 +1,25 @@
+---
+# Combined group variables for Twingate + AAP operations
+# Override these values using environment variables or -e on the command line
+
+# ============================================================================
+# AAP Controller Configuration
+# ============================================================================
+# Priority: AAP credential injection > environment variables > defaults
+# When running as AAP job, AAP injects: host, username, password, oauth_token, verify_ssl
+controller_host: "{{ host | default(lookup('env', 'TOWER_HOST') | default('https://your-aap-instance.com', true), true) }}"
+controller_token: "{{ oauth_token | default(lookup('env', 'TOWER_OAUTH_TOKEN') | default('', true), true) }}"
+controller_username: "{{ username | default(lookup('env', 'TOWER_USERNAME') | default('', true), true) }}"
+controller_password: "{{ password | default(lookup('env', 'TOWER_PASSWORD') | default('', true), true) }}"
+controller_verify_ssl: "{{ verify_ssl | default(lookup('env', 'TOWER_VERIFY_SSL') | default('true', true), true) | bool }}"
+
+# AAP Job Template Defaults
+default_wait: true
+default_timeout: 3600
+default_verbosity: 0
+
+# ============================================================================
+# Twingate Configuration
+# ============================================================================
+# Note: Twingate-specific variables are in vars/twingate_defaults.yml
+# API key should be set via TWINGATE_API_KEY environment variable

@@ -1,0 +1,22 @@
+---
+# Recursive task: fetch one page of users (for resolving user ID by email)
+- name: Fetch users page from Twingate
+  ansible.builtin.uri:
+    url: "{{ twingate_graphql_url }}"
+    method: POST
+    headers: "{{ twingate_headers }}"
+    body_format: json
+    body:
+      query: "{{ twingate_query_users }}"
+      variables: "{{ { 'first': twingate_page_size } | combine({ 'after': twingate_users_after_cursor }) if (twingate_users_after_cursor | default('') | length > 0) else { 'first': twingate_page_size } }}"
+  register: users_page
+
+- name: Accumulate users list
+  ansible.builtin.set_fact:
+    twingate_all_users_list: "{{ (twingate_all_users_list | default([])) + (users_page.json.data.users.edges | map(attribute='node') | list) }}"
+
+- name: Get next page of users
+  ansible.builtin.include_tasks: fetch_users_page.yml
+  vars:
+    twingate_users_after_cursor: "{{ users_page.json.data.users.pageInfo.endCursor | default('') }}"
+  when: users_page.json.data.users.pageInfo.hasNextPage | default(false) | bool
