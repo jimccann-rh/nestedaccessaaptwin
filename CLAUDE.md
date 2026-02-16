@@ -248,7 +248,7 @@ Both `twingate_create_users.yml` and `main.yml` support this via the `csv_line` 
 The playbooks automatically strip common shell command wrappers from `csv_line`, allowing you to paste commands directly from scripts:
 - Detects: `echo 'data' >> filename` or `echo "data" > filename`
 - Extracts: Just the CSV data between quotes
-- Example: Input `echo 'etang,etang@redhat.com,...' >> file.csv` → Output `etang,etang@redhat.com,...`
+- Example: Input `echo 'flast,flast@redhat.com,...' >> file.csv` → Output `flast,flast@redhat.com,...`
 - Implementation: Uses `regex_replace` to remove `echo`, quotes, and redirection operators
 - Only sanitizes if the pattern is detected (doesn't affect normal CSV input)
 

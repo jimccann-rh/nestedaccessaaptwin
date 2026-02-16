@@ -82,8 +82,8 @@ The workflow supports two input methods with automatic fallback:
    - When provided, the CSV file is ignored (even if it exists)
    - Automatically used if CSV file is not found
    - **Auto-sanitization**: Can paste echo commands directly - the playbook automatically strips wrappers:
-     - Input: `echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DPP-00000' >> file.csv`
-     - Cleaned: `etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DPP-00000`
+     - Input: `echo 'flast,flast@redhat.com,DEVQE,First,Last,IBMC-devqe,DPP-00000' >> file.csv`
+     - Cleaned: `flast,flast@redhat.com,DEVQE,First,Last,IBMC-devqe,DPP-00000`
 
 **Note:** If the CSV file is not found and no inline CSV data is provided, the playbook will fail with a clear error message explaining both input options.
 
@@ -361,7 +361,7 @@ aap_template_names: ["Template1","Template2","Template3"]
 
 **Format 4: Paste from echo command (auto-sanitized)**
 ```yaml
-csv_line: "echo 'etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DPP-00000' >> username-devqe.csv"
+csv_line: "echo 'flast,flast@redhat.com,DEVQE,First,Last,IBMC-devqe,DPP-00000' >> username-devqe.csv"
 aap_template_names: ["Template1","Template2","Template3"]
 ```
 The playbook automatically strips the `echo '...'` wrapper and `>> filename` redirection, leaving just the CSV data.
