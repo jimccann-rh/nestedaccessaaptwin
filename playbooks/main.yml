@@ -61,12 +61,6 @@
         - csv_line | length > 0
       tags: [twingate, aap, access]
 
-    - name: Debug has_echo_wrapper
-      ansible.builtin.debug:
-        var: has_echo_wrapper
-      when: has_echo_wrapper is defined
-      tags: [twingate, aap, access]
-
     - name: Extract CSV data from echo command (split by single quote)
       ansible.builtin.set_fact:
         csv_data_parts: "{{ csv_line.split(\"'\") }}"
@@ -76,32 +70,29 @@
         - has_echo_wrapper | default(false) | bool
       tags: [twingate, aap, access]
 
-    - name: Debug csv_data_parts after split
-      ansible.builtin.debug:
-        var: csv_data_parts
-      when: csv_data_parts is defined
-      tags: [twingate, aap, access]
-
-    - name: Debug csv_data_parts length
-      ansible.builtin.debug:
-        msg: "csv_data_parts has {{ csv_data_parts | length }} elements"
-      when: csv_data_parts is defined
-      tags: [twingate, aap, access]
-
-    - name: Get second element (the actual CSV data)
+    - name: Set csv_line_sanitized to extracted value (if echo wrapper detected)
       ansible.builtin.set_fact:
-        csv_line: "{{ csv_data_parts[1] }}"
+        csv_line_sanitized: "{{ csv_data_parts[1] }}"
       when:
         - csv_data_parts is defined
         - csv_data_parts | length > 1
       tags: [twingate, aap, access]
 
-    - name: Debug csv_line after sanitization
-      ansible.builtin.debug:
-        var: csv_line
+    - name: Set csv_line_sanitized to original value (if no echo wrapper)
+      ansible.builtin.set_fact:
+        csv_line_sanitized: "{{ csv_line }}"
       when:
         - csv_line is defined
         - csv_line | length > 0
+        - not (has_echo_wrapper | default(false) | bool)
+      tags: [twingate, aap, access]
+
+    - name: Debug csv_line_sanitized after sanitization
+      ansible.builtin.debug:
+        var: csv_line_sanitized
+      when:
+        - csv_line_sanitized is defined
+        - csv_line_sanitized | length > 0
       tags: [twingate, aap, access]
 
   tasks:
@@ -138,7 +129,7 @@
 
     - name: Use inline CSV line
       ansible.builtin.set_fact:
-        csv_lines: "{{ [csv_line | default('')] }}"
+        csv_lines: "{{ [csv_line_sanitized | default(csv_line) | default('')] }}"
       when:
         - (aap_template_names | default('') | length) > 0
         - (csv_line | default('') | length) > 0

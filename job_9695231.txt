@@ -9,8 +9,27 @@ ok: [localhost] => {
 TASK [Detect if csv_line has echo wrapper] *************************************
 ok: [localhost]
 
+TASK [Debug has_echo_wrapper] **************************************************
+ok: [localhost] => {
+    "has_echo_wrapper": true
+}
+
 TASK [Extract CSV data from echo command (split by single quote)] **************
 ok: [localhost]
+
+TASK [Debug csv_data_parts after split] ****************************************
+ok: [localhost] => {
+    "csv_data_parts": [
+        "echo ",
+        "etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000",
+        " >> username-devqe.csv"
+    ]
+}
+
+TASK [Debug csv_data_parts length] *********************************************
+ok: [localhost] => {
+    "msg": "csv_data_parts has 3 elements"
+}
 
 TASK [Get second element (the actual CSV data)] ********************************
 ok: [localhost]
@@ -220,8 +239,27 @@ ok: [localhost] => {
 TASK [Detect if csv_line has echo wrapper] *************************************
 ok: [localhost]
 
+TASK [Debug has_echo_wrapper] **************************************************
+ok: [localhost] => {
+    "has_echo_wrapper": true
+}
+
 TASK [Extract CSV data from echo command (split by single quote)] **************
 ok: [localhost]
+
+TASK [Debug csv_data_parts after split] ****************************************
+ok: [localhost] => {
+    "csv_data_parts": [
+        "echo ",
+        "etang,etang@redhat.com,DEVQE,Eason,Tang,IBMC-devqe,DP-00000",
+        " >> username-devqe.csv"
+    ]
+}
+
+TASK [Debug csv_data_parts length] *********************************************
+ok: [localhost] => {
+    "msg": "csv_data_parts has 3 elements"
+}
 
 TASK [Get second element (the actual CSV data)] ********************************
 ok: [localhost]
@@ -261,4 +299,4 @@ Red Hat Ansible Automation Platform
 fatal: [localhost]: FAILED! => {"changed": false, "msg": "There were 1 missing items, missing items: [\\"echo 'etang\\"]"}
 
 PLAY RECAP *********************************************************************
-localhost                  : ok=41   changed=0    unreachable=0    failed=1    skipped=17   rescued=0    ignored=0   
+localhost                  : ok=47   changed=0    unreachable=0    failed=1    skipped=17   rescued=0    ignored=0   
