@@ -70,14 +70,14 @@
     - name: Sanitize csv_line (remove echo wrapper if present)
       ansible.builtin.set_fact:
         csv_line: >-
-          {{ csv_line
-          | regex_replace("^\\s*echo\\s+['\"]", "")
-          | regex_replace("['\"]\\s*(>>?\\s+.+)?$", "")
-          | trim }}
+          {% if csv_line.strip().startswith('echo') %}
+          {{ csv_line.split("'")[1] if "'" in csv_line else csv_line.split('"')[1] }}
+          {% else %}
+          {{ csv_line }}
+          {% endif %}
       when:
         - csv_line is defined
         - csv_line | length > 0
-        - "'echo' in csv_line"
 
     - name: Check if CSV file exists
       ansible.builtin.stat:
