@@ -4,7 +4,7 @@
 
 - name: Parse template list
   ansible.builtin.set_fact:
-    _templates: "{{ aap_template_names.split(',') | map('trim') | list }}"
+    _templates: "{{ (aap_template_names is string) | ternary(aap_template_names.split(','), aap_template_names) | map('trim') | list }}"
 
 - name: Grant execute role to {{ aap_username }} on job template(s)
   awx.awx.role:

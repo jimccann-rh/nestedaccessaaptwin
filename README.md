@@ -333,14 +333,32 @@ The playbooks automatically detect and use a custom credential for Twingate:
 
 **AAP Job Template Extra Variables:**
 
-When configuring the AAP job template, you can set these extra variables:
+When configuring the AAP job template, you can set these extra variables.
 
+**Format 1: Comma-separated string (recommended for CLI)**
 ```yaml
 csv_line: 'username,email,DEVQE,First,Last,GroupName,DPP-00000'
 aap_template_names: 'Template1,Template2,Template3'
 ```
 
-**Important:** The `csv_line` variable will automatically be passed to both the Twingate playbook and the AAP tasks. You only need to set it once in the job template extra variables - you do NOT need to set both `csv_line` and `twingate_csv_line`.
+**Format 2: YAML list (recommended for AAP web UI)**
+```yaml
+csv_line: 'username,email,DEVQE,First,Last,GroupName,DPP-00000'
+aap_template_names:
+  - Template1
+  - Template2
+  - Template3
+```
+
+**Format 3: JSON array (also works in AAP web UI)**
+```yaml
+csv_line: 'username,email,DEVQE,First,Last,GroupName,DPP-00000'
+aap_template_names: ["Template1","Template2","Template3"]
+```
+
+**Important:**
+- The `csv_line` variable will automatically be passed to both the Twingate playbook and the AAP tasks. You only need to set it once in the job template extra variables - you do NOT need to set both `csv_line` and `twingate_csv_line`.
+- The `aap_template_names` variable accepts both string (comma-separated) and list formats, so use whichever is most convenient for your setup.
 
 Alternatively, you can use a CSV file by setting:
 ```yaml

@@ -338,8 +338,10 @@ When running as AAP jobs, these variables are injected automatically by AAP cred
 - `csv_path` - Path to user CSV file (default: `data/usernames-devqe.csv`)
 - `csv_line` - Single CSV line to process instead of file (e.g., `'flast,flast@redhat.com,DEVQE,First,Last,IBMC-devqe,DPP-00000'`)
 - `twingate_subdomain` - Twingate subdomain
-- `aap_template_names` - Comma-separated AAP template names
-- `template_name` / `template_names` - For standalone AAP playbook
+- `aap_template_names` - AAP template names (comma-separated string OR YAML list)
+  - String format: `'Template1,Template2,Template3'`
+  - List format: `["Template1","Template2","Template3"]` or YAML list
+- `template_name` / `template_names` - For standalone AAP playbook (same format options)
 - `username` - For standalone AAP playbook (kerberos ID, not email)
 
 **Note:** When `csv_line` is provided, `csv_path` is ignored. This is useful for processing single users or integrating with other systems.
