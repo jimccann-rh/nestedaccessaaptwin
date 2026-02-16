@@ -44,7 +44,7 @@
     # aap_template_names: Comma-separated template names, set via -e aap_template_names='...'
     # Note: csv_line and aap_template_names not defined here to allow passthrough from -e
 
-  tasks:
+  pre_tasks:
     - name: Sanitize csv_line (remove echo wrapper if present)
       ansible.builtin.set_fact:
         csv_line: >-
@@ -58,6 +58,7 @@
         - csv_line | length > 0
       tags: [twingate, aap, access]
 
+  tasks:
     - name: Check if CSV file exists
       ansible.builtin.stat:
         path: "{{ csv_path }}"

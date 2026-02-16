@@ -28,6 +28,18 @@
     # Note: csv_line is not defined here to allow it to be passed from parent playbooks or -e
 
   pre_tasks:
+    - name: Sanitize csv_line (remove echo wrapper if present)
+      ansible.builtin.set_fact:
+        csv_line: >-
+          {% if csv_line.strip().startswith('echo') %}
+          {{ csv_line.split("'")[1] if "'" in csv_line else csv_line.split('"')[1] }}
+          {% else %}
+          {{ csv_line }}
+          {% endif %}
+      when:
+        - csv_line is defined
+        - csv_line | length > 0
+
     - name: Load Twingate API key from environment
       ansible.builtin.set_fact:
         twingate_api_key: "{{ lookup('env', 'TWINGATE_API_KEY') }}"
@@ -67,18 +79,6 @@
         msg: "Twingate API key is set ({{ (twingate_api_key | trim | length) }} characters)."
 
   tasks:
-    - name: Sanitize csv_line (remove echo wrapper if present)
-      ansible.builtin.set_fact:
-        csv_line: >-
-          {% if csv_line.strip().startswith('echo') %}
-          {{ csv_line.split("'")[1] if "'" in csv_line else csv_line.split('"')[1] }}
-          {% else %}
-          {{ csv_line }}
-          {% endif %}
-      when:
-        - csv_line is defined
-        - csv_line | length > 0
-
     - name: Check if CSV file exists
       ansible.builtin.stat:
         path: "{{ csv_path }}"
