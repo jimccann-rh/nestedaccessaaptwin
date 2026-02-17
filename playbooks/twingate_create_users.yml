@@ -22,8 +22,8 @@
     - ../vars/twingate_defaults.yml
 
   vars:
-    # CSV path - can be overridden via -e csv_path=...
-    csv_path: "{{ csv_path | default(playbook_dir + '/../data/usernames-devqe.csv') }}"
+    # CSV path default - can be overridden via -e csv_path=...
+    default_csv_path: "{{ playbook_dir }}/../data/usernames-devqe.csv"
     # CSV line - single line to process instead of file, set via -e csv_line='...'
     # Note: csv_line is not defined here to allow it to be passed from parent playbooks or -e
 
@@ -113,7 +113,7 @@
   tasks:
     - name: Check if CSV file exists
       ansible.builtin.stat:
-        path: "{{ csv_path }}"
+        path: "{{ csv_path | default(default_csv_path) }}"
       register: csv_file_stat
       when: (csv_line | default('') | length) == 0
 
@@ -123,14 +123,14 @@
           - ((csv_line | default('') | length) > 0) or (csv_file_stat.stat.exists | default(false))
         fail_msg: |
           No CSV input found. Please provide either:
-          - A CSV file at: {{ csv_path }}
+          - A CSV file at: {{ csv_path | default(default_csv_path) }}
           - Or inline CSV data via: -e 'csv_line=username,email,DEVQE,First,Last,GroupName,DPP-00000'
       when: (csv_line | default('') | length) == 0
 
     - name: Create users from CSV file and add to groups
       ansible.builtin.include_tasks: ../tasks/twingate/create_users.yml
       vars:
-        twingate_csv_path: "{{ csv_path }}"
+        twingate_csv_path: "{{ csv_path | default(default_csv_path) }}"
         twingate_csv_headerless: true
       when:
         - (csv_line | default('') | length) == 0

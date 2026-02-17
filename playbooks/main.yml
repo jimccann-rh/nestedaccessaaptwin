@@ -38,8 +38,8 @@
     - ../inventory/group_vars/all.yml
 
   vars:
-    # These should be provided via -e or environment
-    csv_path: "{{ csv_path | default(playbook_dir + '/../data/usernames-devqe.csv') }}"
+    # CSV path default - can be overridden via -e csv_path=...
+    default_csv_path: "{{ playbook_dir }}/../data/usernames-devqe.csv"
     # csv_line: Single CSV line to process instead of file, set via -e csv_line='...'
     # aap_template_names: Comma-separated template names, set via -e aap_template_names='...'
     # Note: csv_line and aap_template_names not defined here to allow passthrough from -e
@@ -98,7 +98,7 @@
   tasks:
     - name: Check if CSV file exists
       ansible.builtin.stat:
-        path: "{{ csv_path }}"
+        path: "{{ csv_path | default(default_csv_path) }}"
       register: aap_csv_file_stat
       when:
         - (aap_template_names | default('') | length) > 0
@@ -111,7 +111,7 @@
           - ((csv_line | default('') | length) > 0) or (aap_csv_file_stat.stat.exists | default(false))
         fail_msg: |
           No CSV input found for AAP access grants. Please provide either:
-          - A CSV file at: {{ csv_path }}
+          - A CSV file at: {{ csv_path | default(default_csv_path) }}
           - Or inline CSV data via: -e 'csv_line=username,email,DEVQE,First,Last,GroupName,DPP-00000'
       when:
         - (aap_template_names | default('') | length) > 0
@@ -120,7 +120,7 @@
 
     - name: Read CSV file
       ansible.builtin.set_fact:
-        csv_lines: "{{ lookup('file', csv_path).split('\n') }}"
+        csv_lines: "{{ lookup('file', csv_path | default(default_csv_path)).split('\n') }}"
       when:
         - (aap_template_names | default('') | length) > 0
         - (csv_line | default('') | length) == 0
