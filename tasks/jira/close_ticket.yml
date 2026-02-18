@@ -78,6 +78,15 @@
   when: not (jira_use_pat | bool)
   #no_log: "{{ jira_no_log | default(true) }}"
 
+- name: "Debug comment result for {{ jira_ticket_id }}"
+  ansible.builtin.debug:
+    msg: |
+      Status: {{ jira_comment_result.status | default('NO STATUS') }}
+      Message: {{ jira_comment_result.msg | default('NO MESSAGE') }}
+      {% if jira_comment_result.status | default(0) != 201 %}
+      Error Details: {{ jira_comment_result.json | default(jira_comment_result.content | default('NO DETAILS')) }}
+      {% endif %}
+
 # Get transitions - PAT
 - name: "Get available transitions for {{ jira_ticket_id }} (using PAT)"
   ansible.builtin.uri:
@@ -186,5 +195,11 @@
 
 - name: "Report failure for {{ jira_ticket_id }}"
   ansible.builtin.debug:
-    msg: "WARNING: Failed to update Jira ticket {{ jira_ticket_id }} - {{ jira_comment_result.msg | default('unknown error') }}"
+    msg: |
+      WARNING: Failed to update Jira ticket {{ jira_ticket_id }}
+      Status Code: {{ jira_comment_result.status | default('NO STATUS') }}
+      Error: {{ jira_comment_result.msg | default('unknown error') }}
+      {% if jira_comment_result.json is defined %}
+      Details: {{ jira_comment_result.json }}
+      {% endif %}
   when: jira_comment_result.status | default(0) != 201
