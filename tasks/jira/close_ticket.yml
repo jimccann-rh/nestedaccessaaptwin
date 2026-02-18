@@ -46,7 +46,7 @@
     headers:
       Content-Type: "application/json"
       Authorization: "Bearer {{ jira_pat }}"
-  register: jira_comment_result
+  register: jira_comment_result_pat
   failed_when: false
   when: jira_use_pat | bool
   #no_log: "{{ jira_no_log | default(true) }}"
@@ -73,10 +73,14 @@
     status_code: [201]
     headers:
       Content-Type: "application/json"
-  register: jira_comment_result
+  register: jira_comment_result_basic
   failed_when: false
   when: not (jira_use_pat | bool)
   #no_log: "{{ jira_no_log | default(true) }}"
+
+- name: "Combine comment results for {{ jira_ticket_id }}"
+  ansible.builtin.set_fact:
+    jira_comment_result: "{{ jira_comment_result_pat if jira_use_pat else jira_comment_result_basic }}"
 
 - name: "Debug comment result for {{ jira_ticket_id }}"
   ansible.builtin.debug:
@@ -96,7 +100,7 @@
     headers:
       Content-Type: "application/json"
       Authorization: "Bearer {{ jira_pat }}"
-  register: jira_transitions_result
+  register: jira_transitions_result_pat
   failed_when: false
   when:
     - jira_use_pat | bool
@@ -114,12 +118,17 @@
     status_code: [200]
     headers:
       Content-Type: "application/json"
-  register: jira_transitions_result
+  register: jira_transitions_result_basic
   failed_when: false
   when:
     - not (jira_use_pat | bool)
     - jira_comment_result.status | default(0) == 201
   no_log: "{{ jira_no_log | default(true) }}"
+
+- name: "Combine transitions results for {{ jira_ticket_id }}"
+  ansible.builtin.set_fact:
+    jira_transitions_result: "{{ jira_transitions_result_pat if jira_use_pat else jira_transitions_result_basic }}"
+  when: jira_comment_result.status | default(0) == 201
 
 - name: "Find close/done transition ID for {{ jira_ticket_id }}"
   ansible.builtin.set_fact:
@@ -148,7 +157,7 @@
     headers:
       Content-Type: "application/json"
       Authorization: "Bearer {{ jira_pat }}"
-  register: jira_transition_result
+  register: jira_transition_result_pat
   failed_when: false
   when:
     - jira_use_pat | bool
@@ -171,13 +180,20 @@
     status_code: [204]
     headers:
       Content-Type: "application/json"
-  register: jira_transition_result
+  register: jira_transition_result_basic
   failed_when: false
   when:
     - not (jira_use_pat | bool)
     - close_transition_id is defined
     - close_transition_id | length > 0
   no_log: "{{ jira_no_log | default(true) }}"
+
+- name: "Combine transition results for {{ jira_ticket_id }}"
+  ansible.builtin.set_fact:
+    jira_transition_result: "{{ jira_transition_result_pat if jira_use_pat else jira_transition_result_basic }}"
+  when:
+    - close_transition_id is defined
+    - close_transition_id | length > 0
 
 - name: "Report success for {{ jira_ticket_id }}"
   ansible.builtin.debug:
