@@ -65,7 +65,7 @@ Optional environment variables (for Jira integration - choose ONE authentication
 
 **Note:** If `JIRA_PAT` is set, it will be used and email+token will be ignored. If no Jira credentials are set, the Jira integration is automatically skipped without errors.
 
-**AAP Users:** When running as AAP jobs, if you have a custom credential that injects `nb_token`, it will automatically be used as the Jira PAT. No additional configuration needed.
+**AAP Users:** When running as AAP jobs, if you have a custom credential that injects `secret`, it will automatically be used as the Jira PAT. No additional configuration needed.
 
 ### 3. Prepare User Data
 
