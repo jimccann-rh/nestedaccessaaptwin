@@ -29,13 +29,13 @@
         * AAP job template execute permissions granted
 
         Automated by: {{ lookup('env', 'USER') | default('ansible') }}
-        Timestamp: {{ ansible_date_time.iso8601 }}
+        Timestamp: {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
     status_code: [201]
     headers:
       Content-Type: "application/json"
   register: jira_comment_result
   failed_when: false
-  no_log: "{{ jira_no_log | default(true) }}"
+  #no_log: "{{ jira_no_log | default(true) }}"
 
 - name: "Get available transitions for {{ jira_ticket_id }}"
   ansible.builtin.uri:
