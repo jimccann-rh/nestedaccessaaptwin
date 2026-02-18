@@ -189,7 +189,7 @@
     # Jira authentication priority order:
     # 1. Extra vars from -e (jira_pat, jira_email, jira_api_token)
     # 2. Environment variables (JIRA_PAT, JIRA_EMAIL, JIRA_API_TOKEN)
-    # 3. AAP credentials (jira_pat_credential, jira_email_credential, jira_api_token_credential)
+    # 3. AAP credentials (nb_token, jira_pat_credential, jira_email_credential, jira_api_token_credential)
 
     # Load Jira PAT (preferred method) - only if not already set via -e
     - name: Load Jira PAT from environment
@@ -201,7 +201,17 @@
         - lookup('env', 'JIRA_PAT') | length > 0
       tags: [jira]
 
-    - name: Load Jira PAT from AAP credential (for AAP job execution)
+    - name: Load Jira PAT from AAP nb_token credential (for AAP job execution)
+      ansible.builtin.set_fact:
+        jira_pat: "{{ nb_token }}"
+      when:
+        - jira_enabled | bool
+        - jira_pat is not defined or jira_pat | length == 0
+        - nb_token is defined
+        - nb_token | length > 0
+      tags: [jira]
+
+    - name: Load Jira PAT from AAP jira_pat_credential (for AAP job execution)
       ansible.builtin.set_fact:
         jira_pat: "{{ jira_pat_credential }}"
       when:
