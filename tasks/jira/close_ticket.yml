@@ -37,7 +37,7 @@
         User provisioning completed successfully via Ansible automation:
         * Username: {{ username }}
         * Email: {{ user_email }}
-        * Twingate user created and added to group
+        * Twingate user added and email invite sent
         * AAP job template execute permissions granted
 
         Automated by: {{ lookup('env', 'USER') | default('ansible') }}
@@ -65,7 +65,7 @@
         User provisioning completed successfully via Ansible automation:
         * Username: {{ username }}
         * Email: {{ user_email }}
-        * Twingate user created and added to group
+        * Twingate user added and email invite sent
         * AAP job template execute permissions granted
 
         Automated by: {{ lookup('env', 'USER') | default('ansible') }}
