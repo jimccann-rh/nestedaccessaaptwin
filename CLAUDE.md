@@ -68,6 +68,19 @@ ansible-playbook playbooks/main.yml --tags twingate
 # Run only AAP tasks
 ansible-playbook playbooks/main.yml --tags aap \
   -e "aap_template_names=Template1,Template2"
+
+# Enable Jira ticket closure (disabled by default)
+ansible-playbook playbooks/main.yml \
+  -e "jira_enabled=true" \
+  -e "aap_template_names=Template1,Template2"
+
+# Skip Jira ticket closure (can also just omit jira_enabled=true)
+ansible-playbook playbooks/main.yml --skip-tags jira \
+  -e "aap_template_names=Template1,Template2"
+
+# Run only Jira tasks (requires CSV with successful provisioning and jira_enabled=true)
+ansible-playbook playbooks/main.yml --tags jira \
+  -e "jira_enabled=true"
 ```
 
 ### Testing and Validation
@@ -87,16 +100,18 @@ ansible-playbook playbooks/main.yml -vv \
 
 ## Architecture
 
-### Two-Stage Workflow
+### Three-Stage Workflow
 
 The project uses a master orchestration approach:
 
 1. **Stage 1 (Twingate)**: `twingate_create_users.yml` reads CSV, creates users via GraphQL API (uses email addresses from column 2)
 2. **Stage 2 (AAP)**: Extracts usernames from same CSV, grants AAP template access to each user (uses kerberos IDs from column 1)
+3. **Stage 3 (Jira - Optional)**: After successful completion of both stages, automatically closes Jira tickets (ticket IDs from column 7)
 
 **Important:** Twingate uses **email addresses** while AAP uses **usernames/kerberos IDs**. The CSV format accommodates both:
 - Column 1: Username (kerberos ID) - used for AAP
 - Column 2: Email address - used for Twingate
+- Column 7: Jira ticket ID (e.g., DPP-00000) - used for automatic ticket closure (optional)
 
 This is implemented in `playbooks/main.yml` which imports the Twingate playbook and then runs AAP tasks in batch mode.
 
@@ -199,11 +214,13 @@ Supports two methods (configured in `inventory/group_vars/all.yml`):
 1. CSV file (`data/usernames-devqe.csv`) is the single source of truth
 2. Twingate playbook reads CSV → extracts emails (column 2) → creates users + assigns groups
 3. AAP batch task reads same CSV → extracts usernames (column 1) → grants template access to each
+4. Jira post-tasks (optional) reads same CSV → extracts ticket IDs (column 7) → closes tickets with comments
 
 **Key Distinction:**
 - Twingate API requires email addresses to create users
 - AAP requires kerberos IDs/usernames to grant permissions
-- The CSV contains both in columns 1 and 2 respectively
+- Jira integration uses ticket IDs to close provisioning requests
+- The CSV contains all three data points in columns 1, 2, and 7 respectively
 
 ## Development Guidelines
 
@@ -230,6 +247,67 @@ The AAP integration uses the `awx.awx` collection modules. Common modules:
 All use the controller authentication variables from `inventory/group_vars/all.yml`.
 
 **Note:** The warning "You are using the awx version of this collection but connecting to Red Hat Ansible Automation Platform" is informational only. The `awx.awx` collection is fully compatible with AAP.
+
+### Jira Integration
+
+**Overview:**
+The project can automatically close Jira tickets after successful user provisioning. This is an **optional feature disabled by default** that runs after both Twingate and AAP tasks complete successfully.
+
+**Enabling Jira Integration:**
+Jira integration must be explicitly enabled using the `jira_enabled` variable:
+```bash
+ansible-playbook playbooks/main.yml \
+  -e "jira_enabled=true" \
+  -e "aap_template_names=Template1,Template2"
+```
+
+**How It Works:**
+- Must be enabled with `-e "jira_enabled=true"` (defaults to `false`)
+- Extracts Jira ticket IDs from CSV (column 7, e.g., DPP-00000)
+- After both Twingate user creation AND AAP access grant succeed, the playbook:
+  1. Adds a comment to the Jira ticket documenting the provisioning
+  2. Transitions the ticket to a closed state (searches for transitions named "Close", "Done", or "Resolve")
+- Uses Jira REST API v2 with API token authentication
+- Ticket closure runs in `post_tasks` section of `main.yml`
+
+**Authentication:**
+Requires API token authentication with email:
+- Local CLI runs: Set `JIRA_EMAIL` and `JIRA_API_TOKEN` environment variables
+- AAP job execution: Use AAP custom credential that injects `jira_email_credential` and `jira_api_token_credential`
+- Base URL: Defaults to `https://issues.redhat.com`, override with `JIRA_BASE_URL`
+
+**To get a Jira API token:**
+1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
+2. Click "Create API token"
+3. Copy the token and set it as `JIRA_API_TOKEN` environment variable
+
+**Error Handling:**
+- Jira integration uses "warn and continue" approach
+- If `jira_enabled=false` (default), all Jira tasks are skipped
+- If `jira_enabled=true` but credentials are not set, Jira tasks are skipped (no error)
+- If ticket update fails, a warning is logged but the playbook continues
+- User provisioning success is not dependent on Jira ticket closure
+
+**Disabling Jira Integration:**
+Jira integration is disabled by default. To ensure it's disabled:
+- Omit the `-e "jira_enabled=true"` flag (default behavior)
+- Or explicitly set: `-e "jira_enabled=false"`
+- Or use tags: `ansible-playbook playbooks/main.yml --skip-tags jira`
+
+**AAP Job Configuration:**
+When running as AAP jobs:
+1. Create a Custom Credential Type with inputs: `jira_email_credential`, `jira_api_token_credential`
+2. Create a Credential using that type with your Jira email and API token
+3. Attach to your Job Template
+4. In your Job Template's extra variables, add: `jira_enabled: true`
+5. AAP will inject the credential variables automatically when the job runs
+
+**Task Files:**
+- `tasks/jira/close_ticket.yml` - Main Jira ticket closure task
+  - Adds comment with provisioning details
+  - Fetches available transitions
+  - Finds and executes close/done/resolve transition
+  - Reports success or failure
 
 ### CSV Format Handling
 
@@ -278,6 +356,12 @@ The playbooks use `assert` tasks to validate inputs and fail early with clear me
 - Username is provided (for standalone playbook)
 - CSV input exists for batch operations (either file or inline data)
 
+**Jira Validation:**
+- Jira integration is optional - tasks are skipped if credentials are not set
+- No errors are raised if Jira is not configured
+- If Jira update fails, a warning is logged but playbook continues
+- This ensures user provisioning succeeds even if Jira ticket closure fails
+
 **CSV Input Validation:**
 Both `twingate_create_users.yml` and `main.yml` check for CSV input before processing:
 1. If inline CSV data (`csv_line`) is provided, use it
@@ -303,6 +387,9 @@ tasks/twingate/                - All Twingate GraphQL operations
   fetch_all_users.yml          - Fetch existing users (pagination)
   list_groups.yml              - List groups operation
 
+tasks/jira/                    - Jira integration tasks
+  close_ticket.yml             - Close Jira ticket with comment
+
 vars/
   twingate_defaults.yml        - Twingate config (subdomain, GraphQL queries)
 
@@ -323,6 +410,9 @@ data/
 **Optional:**
 - `TOWER_USERNAME` / `TOWER_PASSWORD` - Alternative to token auth
 - `TOWER_VERIFY_SSL` - SSL verification (default: true)
+- `JIRA_EMAIL` - Email for Jira API authentication (enables Jira integration)
+- `JIRA_API_TOKEN` - Jira API token (required if JIRA_EMAIL is set)
+- `JIRA_BASE_URL` - Jira instance URL (default: https://issues.redhat.com)
 
 **AAP Job Execution:**
 
@@ -342,9 +432,18 @@ When running as AAP jobs, these variables are injected automatically by AAP cred
 - Not set manually - AAP injects these automatically when you attach an AAP credential
 - `inventory/group_vars/all.yml` automatically uses these if environment variables are not available
 
+*Jira (via custom credential - optional):*
+- `jira_email_credential` - Jira email for API authentication (injected via AAP custom credential)
+- `jira_api_token_credential` - Jira API token (injected via AAP custom credential)
+- Not set manually - AAP injects these automatically when you attach the Jira custom credential
+- The playbook will use these if `JIRA_EMAIL` and `JIRA_API_TOKEN` environment variables are not available
+- **Important:** Even with credentials set, you must also enable Jira with `jira_enabled: true` in job template extra variables
+- If `jira_enabled=false` (default), Jira integration is skipped regardless of credentials
+
 **Overridable via `-e`:**
 - `csv_path` - Path to user CSV file (default: `data/usernames-devqe.csv`)
 - `csv_line` - Single CSV line to process instead of file (e.g., `'flast,flast@redhat.com,DEVQE,First,Last,IBMC-devqe,DPP-00000'`)
+- `jira_enabled` - Enable Jira ticket closure (default: `false`, set to `true` to enable)
 - `twingate_subdomain` - Twingate subdomain
 - `aap_template_names` - AAP template names (comma-separated string OR YAML list)
   - String format: `'Template1,Template2,Template3'`

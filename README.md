@@ -1,6 +1,6 @@
 # Twingate + AAP User Provisioning
 
-Automated user provisioning workflow combining Twingate user creation with AAP (Ansible Automation Platform) job template access management.
+Automated user provisioning workflow combining Twingate user creation with AAP (Ansible Automation Platform) job template access management, and optional Jira ticket closure.
 
 ## Overview
 
@@ -8,6 +8,7 @@ This project automates the complete user onboarding process:
 
 1. **Twingate User Creation**: Creates users in Twingate from a CSV file and assigns them to appropriate groups
 2. **AAP Access Grant**: Grants execute permissions on AAP job templates to provisioned users
+3. **Jira Ticket Closure** (Optional): Automatically closes Jira tickets after successful provisioning
 
 ## Prerequisites
 
@@ -16,6 +17,7 @@ This project automates the complete user onboarding process:
 - Twingate API access (API key required)
 - AAP instance access (token or username/password required)
 - Network/API connectivity to both Twingate and AAP
+- Jira API access (email + API token - optional, for ticket closure feature)
 
 ## Quick Start
 
@@ -52,6 +54,13 @@ Required environment variables:
 - `TOWER_HOST` - Your AAP instance URL (e.g., https://aap.example.com)
 - `TOWER_OAUTH_TOKEN` - Your AAP authentication token (or use TOWER_USERNAME/TOWER_PASSWORD)
 
+Optional environment variables (for Jira integration):
+- `JIRA_EMAIL` - Your Jira email address (e.g., user@redhat.com)
+- `JIRA_API_TOKEN` - Your Jira API token (get from https://id.atlassian.com/manage-profile/security/api-tokens)
+- `JIRA_BASE_URL` - Jira instance URL (default: https://issues.redhat.com)
+
+**Note:** If Jira credentials are not set, the Jira integration is automatically skipped without errors.
+
 ### 3. Prepare User Data
 
 Place your user CSV file in the `data/` directory. The default file is `data/usernames-devqe.csv`.
@@ -64,8 +73,9 @@ username,email@example.com,DEVQE,First,Last,IBMC-groupname,DPP-00000
 - Column 1: Username/Kerberos ID (used for AAP)
 - Column 2: Email address (used for Twingate)
 - Column 6: Twingate group name (optional)
+- Column 7: Jira ticket ID (e.g., DPP-00000) - used for automatic ticket closure (optional)
 
-**Important:** The CSV uses both username (column 1) for AAP and email (column 2) for Twingate.
+**Important:** The CSV uses username (column 1) for AAP, email (column 2) for Twingate, and ticket ID (column 7) for Jira integration.
 
 ### Input Methods
 
@@ -170,6 +180,48 @@ This will:
 ```
 username,email,DEVQE,First,Last,GroupName,DPP-00000
 ```
+
+### Enable Jira Ticket Closure
+
+By default, Jira integration is **disabled**. To enable automatic ticket closure after successful provisioning:
+
+**Enable Jira with environment variables:**
+```bash
+# Set Jira credentials
+export JIRA_EMAIL=your_email@redhat.com
+export JIRA_API_TOKEN=your_jira_api_token
+
+# Run workflow with Jira enabled
+ansible-playbook playbooks/main.yml \
+  -e "jira_enabled=true" \
+  -e "aap_template_names=Template1,Template2"
+```
+
+**One-liner with .env file:**
+```bash
+set -a && source .env && set +a && ansible-playbook playbooks/main.yml \
+  -e "jira_enabled=true" \
+  -e "aap_template_names=Template1,Template2"
+```
+
+**Using helper script (requires setting JIRA_ENABLED=true in .env or exporting it):**
+```bash
+export JIRA_ENABLED=true
+./run.sh full
+```
+
+**What happens when Jira is enabled:**
+1. After both Twingate and AAP tasks complete successfully
+2. Extracts Jira ticket IDs from CSV column 7 (e.g., DPP-00000)
+3. Adds a comment to each ticket documenting the provisioning
+4. Transitions the ticket to closed/done status
+
+**Note:** If Jira update fails, a warning is logged but the playbook continues. User provisioning success is not dependent on Jira ticket closure.
+
+**To disable Jira integration:**
+- Simply omit the `-e "jira_enabled=true"` flag (default behavior)
+- Or explicitly disable: `-e "jira_enabled=false"`
+- Or use tags: `--skip-tags jira`
 
 ### Run Twingate Only
 

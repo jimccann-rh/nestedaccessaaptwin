@@ -40,6 +40,8 @@
   vars:
     # CSV path default - can be overridden via -e csv_path=...
     default_csv_path: "{{ playbook_dir }}/../data/usernames-devqe.csv"
+    # Jira integration - disabled by default, enable with -e jira_enabled=true
+    jira_enabled: false
     # csv_line: Single CSV line to process instead of file, set via -e csv_line='...'
     # aap_template_names: Comma-separated template names, set via -e aap_template_names='...'
     # Note: csv_line and aap_template_names not defined here to allow passthrough from -e
@@ -96,6 +98,23 @@
       tags: [twingate, aap, access]
 
   tasks:
+    - name: Check if AAP template names are provided
+      ansible.builtin.debug:
+        msg: |
+          WARNING: No AAP template names provided. AAP access grant tasks will be skipped.
+          To grant AAP access, provide template names via:
+            -e "aap_template_names=Template1,Template2,Template3"
+      when:
+        - (aap_template_names | default('') | length) == 0
+      tags: [aap, access]
+
+    - name: Confirm AAP template names received
+      ansible.builtin.debug:
+        msg: "AAP template names provided: {{ aap_template_names }}"
+      when:
+        - (aap_template_names | default('') | length) > 0
+      tags: [aap, access]
+
     - name: Check if CSV file exists
       ansible.builtin.stat:
         path: "{{ csv_path | default(default_csv_path) }}"
@@ -147,6 +166,13 @@
         - item.split(',')[0] | length > 0
       tags: [aap, access]
 
+    - name: Display extracted usernames for AAP
+      ansible.builtin.debug:
+        msg: "Extracted {{ aap_usernames | default([]) | length }} username(s) for AAP access: {{ aap_usernames | default([]) }}"
+      when:
+        - (aap_template_names | default('') | length) > 0
+      tags: [aap, access]
+
     - name: Grant AAP template execute access to all users
       ansible.builtin.include_tasks: aap_grant_access_task.yml
       loop: "{{ aap_usernames }}"
@@ -157,3 +183,67 @@
         - aap_usernames is defined
         - aap_usernames | length > 0
       tags: [aap, access]
+
+  post_tasks:
+    - name: Load Jira email from environment
+      ansible.builtin.set_fact:
+        jira_email: "{{ lookup('env', 'JIRA_EMAIL') }}"
+      when:
+        - jira_enabled | bool
+        - lookup('env', 'JIRA_EMAIL') | length > 0
+      tags: [jira]
+
+    - name: Load Jira API token from environment
+      ansible.builtin.set_fact:
+        jira_api_token: "{{ lookup('env', 'JIRA_API_TOKEN') }}"
+      when:
+        - jira_enabled | bool
+        - lookup('env', 'JIRA_API_TOKEN') | length > 0
+      tags: [jira]
+
+    - name: Load Jira credentials from AAP (for AAP job execution)
+      ansible.builtin.set_fact:
+        jira_email: "{{ jira_email_credential | default(jira_email) }}"
+        jira_api_token: "{{ jira_api_token_credential | default(jira_api_token) }}"
+      when:
+        - jira_enabled | bool
+        - jira_email_credential is defined or jira_api_token_credential is defined
+      tags: [jira]
+
+    - name: Set Jira base URL
+      ansible.builtin.set_fact:
+        jira_base_url: "{{ lookup('env', 'JIRA_BASE_URL') | default('https://issues.redhat.com') }}"
+      when: jira_enabled | bool
+      tags: [jira]
+
+    - name: Extract Jira ticket IDs and user info from CSV
+      ansible.builtin.set_fact:
+        jira_tickets: "{{ jira_tickets | default([]) + [{'ticket_id': item.split(',')[6], 'username': item.split(',')[0], 'email': item.split(',')[1]}] }}"
+      loop: "{{ csv_lines }}"
+      when:
+        - jira_enabled | bool
+        - jira_email is defined
+        - jira_email | length > 0
+        - jira_api_token is defined
+        - jira_api_token | length > 0
+        - csv_lines is defined
+        - item | length > 0
+        - item.split(',') | length > 6
+        - item.split(',')[6] | length > 0
+        - item.split(',')[6] != ''
+      tags: [jira]
+
+    - name: Close Jira tickets after successful provisioning
+      ansible.builtin.include_tasks: ../tasks/jira/close_ticket.yml
+      loop: "{{ jira_tickets }}"
+      loop_control:
+        loop_var: ticket_info
+      vars:
+        jira_ticket_id: "{{ ticket_info.ticket_id }}"
+        username: "{{ ticket_info.username }}"
+        user_email: "{{ ticket_info.email }}"
+      when:
+        - jira_enabled | bool
+        - jira_tickets is defined
+        - jira_tickets | length > 0
+      tags: [jira]
