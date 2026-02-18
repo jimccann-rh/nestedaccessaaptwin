@@ -271,29 +271,38 @@ ansible-playbook playbooks/main.yml \
 - Ticket closure runs in `post_tasks` section of `main.yml`
 
 **Authentication:**
-Supports two authentication methods (checked in priority order):
+Supports two authentication methods with flexible credential sources:
+
+**Credential Priority (highest to lowest):**
+1. Command-line extra vars: `-e jira_pat=...` or `-e jira_email=... -e jira_api_token=...`
+2. Environment variables: `JIRA_PAT` or `JIRA_EMAIL` + `JIRA_API_TOKEN`
+3. AAP custom credentials: `jira_pat_credential` or `jira_email_credential` + `jira_api_token_credential`
+
+**Authentication Methods:**
 
 1. **Personal Access Token (PAT) - RECOMMENDED** for Red Hat Jira / Jira Data Center:
-   - Local CLI runs: Set `JIRA_PAT` environment variable
+   - Command line: `-e "jira_pat=your_token"`
+   - Environment variable: Set `JIRA_PAT`
    - AAP job execution: Use AAP custom credential that injects `jira_pat_credential`
    - Simpler and more secure - only one credential needed
    - **To get a PAT for Red Hat Jira:**
      - Go to https://issues.redhat.com
      - Click your profile → Personal Access Tokens
      - Click "Create token"
-     - Copy the token and set it as `JIRA_PAT` environment variable
+     - Copy and use the token
 
 2. **Email + API Token** (fallback) for Jira Cloud or if PAT not available:
-   - Local CLI runs: Set `JIRA_EMAIL` and `JIRA_API_TOKEN` environment variables
+   - Command line: `-e "jira_email=..." -e "jira_api_token=..."`
+   - Environment variables: Set `JIRA_EMAIL` and `JIRA_API_TOKEN`
    - AAP job execution: Use AAP custom credential that injects `jira_email_credential` and `jira_api_token_credential`
    - **To get an API token for Jira Cloud:**
      - Go to https://id.atlassian.com/manage-profile/security/api-tokens
      - Click "Create API token"
-     - Copy the token and set it as `JIRA_API_TOKEN` environment variable
+     - Copy and use the token
 
-Base URL: Defaults to `https://issues.redhat.com`, override with `JIRA_BASE_URL`
+Base URL: Defaults to `https://issues.redhat.com`, override with `JIRA_BASE_URL` or `-e "jira_base_url=..."`
 
-**Note:** If `JIRA_PAT` is set, it will be used and email+token will be ignored.
+**Note:** If PAT is provided (via any method), it will be used and email+token will be ignored.
 
 **Error Handling:**
 - Jira integration uses "warn and continue" approach
@@ -473,6 +482,10 @@ When running as AAP jobs, these variables are injected automatically by AAP cred
 - `csv_path` - Path to user CSV file (default: `data/usernames-devqe.csv`)
 - `csv_line` - Single CSV line to process instead of file (e.g., `'flast,flast@redhat.com,DEVQE,First,Last,IBMC-devqe,DPP-00000'`)
 - `jira_enabled` - Enable Jira ticket closure (default: `false`, set to `true` to enable)
+- `jira_pat` - Jira Personal Access Token (overrides environment variable and AAP credential)
+- `jira_email` - Jira email for API authentication (overrides environment variable and AAP credential)
+- `jira_api_token` - Jira API token (overrides environment variable and AAP credential)
+- `jira_base_url` - Jira base URL (default: `https://issues.redhat.com`)
 - `twingate_subdomain` - Twingate subdomain
 - `aap_template_names` - AAP template names (comma-separated string OR YAML list)
   - String format: `'Template1,Template2,Template3'`

@@ -212,6 +212,27 @@ ansible-playbook playbooks/main.yml \
   -e "aap_template_names=Template1,Template2"
 ```
 
+**Pass credentials via command line (alternative to environment variables):**
+```bash
+# Using PAT via -e flag
+ansible-playbook playbooks/main.yml \
+  -e "jira_enabled=true" \
+  -e "jira_pat=your_personal_access_token" \
+  -e "aap_template_names=Template1,Template2"
+
+# Using Email + API Token via -e flags
+ansible-playbook playbooks/main.yml \
+  -e "jira_enabled=true" \
+  -e "jira_email=your_email@redhat.com" \
+  -e "jira_api_token=your_jira_api_token" \
+  -e "aap_template_names=Template1,Template2"
+```
+
+**Credential Priority Order:**
+1. Command-line extra vars (`-e jira_pat=...`) - Highest priority
+2. Environment variables (`JIRA_PAT`, `JIRA_EMAIL`, etc.)
+3. AAP custom credentials - Lowest priority
+
 **One-liner with .env file:**
 ```bash
 set -a && source .env && set +a && ansible-playbook playbooks/main.yml \

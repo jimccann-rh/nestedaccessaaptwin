@@ -46,6 +46,7 @@
     # aap_template_names: Comma-separated template names, set via -e aap_template_names='...'
     # Note: csv_line and aap_template_names not defined here to allow passthrough from -e
 
+
   pre_tasks:
     - name: Debug csv_line before sanitization
       ansible.builtin.debug:
@@ -185,53 +186,78 @@
       tags: [aap, access]
 
   post_tasks:
-    # Jira authentication: Check for PAT first (preferred), then fall back to email+token
-    - name: Load Jira PAT from environment (preferred method)
+    # Jira authentication priority order:
+    # 1. Extra vars from -e (jira_pat, jira_email, jira_api_token)
+    # 2. Environment variables (JIRA_PAT, JIRA_EMAIL, JIRA_API_TOKEN)
+    # 3. AAP credentials (jira_pat_credential, jira_email_credential, jira_api_token_credential)
+
+    # Load Jira PAT (preferred method) - only if not already set via -e
+    - name: Load Jira PAT from environment
       ansible.builtin.set_fact:
         jira_pat: "{{ lookup('env', 'JIRA_PAT') }}"
       when:
         - jira_enabled | bool
+        - jira_pat is not defined or jira_pat | length == 0
         - lookup('env', 'JIRA_PAT') | length > 0
       tags: [jira]
 
     - name: Load Jira PAT from AAP credential (for AAP job execution)
       ansible.builtin.set_fact:
-        jira_pat: "{{ jira_pat_credential | default(jira_pat) }}"
+        jira_pat: "{{ jira_pat_credential }}"
       when:
         - jira_enabled | bool
+        - jira_pat is not defined or jira_pat | length == 0
         - jira_pat_credential is defined
         - jira_pat_credential | length > 0
       tags: [jira]
 
-    - name: Load Jira email from environment (fallback method)
+    # Load Jira email (fallback method) - only if not already set via -e
+    - name: Load Jira email from environment
       ansible.builtin.set_fact:
         jira_email: "{{ lookup('env', 'JIRA_EMAIL') }}"
       when:
         - jira_enabled | bool
+        - jira_email is not defined or jira_email | length == 0
         - lookup('env', 'JIRA_EMAIL') | length > 0
       tags: [jira]
 
-    - name: Load Jira API token from environment (fallback method)
+    - name: Load Jira email from AAP credential (for AAP job execution)
+      ansible.builtin.set_fact:
+        jira_email: "{{ jira_email_credential }}"
+      when:
+        - jira_enabled | bool
+        - jira_email is not defined or jira_email | length == 0
+        - jira_email_credential is defined
+        - jira_email_credential | length > 0
+      tags: [jira]
+
+    # Load Jira API token (fallback method) - only if not already set via -e
+    - name: Load Jira API token from environment
       ansible.builtin.set_fact:
         jira_api_token: "{{ lookup('env', 'JIRA_API_TOKEN') }}"
       when:
         - jira_enabled | bool
+        - jira_api_token is not defined or jira_api_token | length == 0
         - lookup('env', 'JIRA_API_TOKEN') | length > 0
       tags: [jira]
 
-    - name: Load Jira email+token from AAP (for AAP job execution, fallback method)
+    - name: Load Jira API token from AAP credential (for AAP job execution)
       ansible.builtin.set_fact:
-        jira_email: "{{ jira_email_credential | default(jira_email) }}"
-        jira_api_token: "{{ jira_api_token_credential | default(jira_api_token) }}"
+        jira_api_token: "{{ jira_api_token_credential }}"
       when:
         - jira_enabled | bool
-        - jira_email_credential is defined or jira_api_token_credential is defined
+        - jira_api_token is not defined or jira_api_token | length == 0
+        - jira_api_token_credential is defined
+        - jira_api_token_credential | length > 0
       tags: [jira]
 
+    # Load Jira base URL - only if not already set via -e
     - name: Set Jira base URL
       ansible.builtin.set_fact:
         jira_base_url: "{{ lookup('env', 'JIRA_BASE_URL') | default('https://issues.redhat.com') }}"
-      when: jira_enabled | bool
+      when:
+        - jira_enabled | bool
+        - jira_base_url is not defined or jira_base_url | length == 0
       tags: [jira]
 
     - name: Check Jira authentication credentials
