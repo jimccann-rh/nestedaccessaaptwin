@@ -54,12 +54,16 @@ Required environment variables:
 - `TOWER_HOST` - Your AAP instance URL (e.g., https://aap.example.com)
 - `TOWER_OAUTH_TOKEN` - Your AAP authentication token (or use TOWER_USERNAME/TOWER_PASSWORD)
 
-Optional environment variables (for Jira integration):
-- `JIRA_EMAIL` - Your Jira email address (e.g., user@redhat.com)
-- `JIRA_API_TOKEN` - Your Jira API token (get from https://id.atlassian.com/manage-profile/security/api-tokens)
-- `JIRA_BASE_URL` - Jira instance URL (default: https://issues.redhat.com)
+Optional environment variables (for Jira integration - choose ONE authentication method):
+- **Method 1 (Recommended for Red Hat Jira):** Personal Access Token
+  - `JIRA_PAT` - Your Jira Personal Access Token (get from https://issues.redhat.com → Profile → Personal Access Tokens)
+- **Method 2 (Fallback for Jira Cloud):** Email + API Token
+  - `JIRA_EMAIL` - Your Jira email address (e.g., user@redhat.com)
+  - `JIRA_API_TOKEN` - Your Jira API token (get from https://id.atlassian.com/manage-profile/security/api-tokens)
+- **Both methods:**
+  - `JIRA_BASE_URL` - Jira instance URL (default: https://issues.redhat.com)
 
-**Note:** If Jira credentials are not set, the Jira integration is automatically skipped without errors.
+**Note:** If `JIRA_PAT` is set, it will be used and email+token will be ignored. If no Jira credentials are set, the Jira integration is automatically skipped without errors.
 
 ### 3. Prepare User Data
 
@@ -185,7 +189,18 @@ username,email,DEVQE,First,Last,GroupName,DPP-00000
 
 By default, Jira integration is **disabled**. To enable automatic ticket closure after successful provisioning:
 
-**Enable Jira with environment variables:**
+**Enable Jira with environment variables (Method 1 - PAT, recommended for Red Hat Jira):**
+```bash
+# Set Jira PAT credential
+export JIRA_PAT=your_personal_access_token
+
+# Run workflow with Jira enabled
+ansible-playbook playbooks/main.yml \
+  -e "jira_enabled=true" \
+  -e "aap_template_names=Template1,Template2"
+```
+
+**Or with Email + API Token (Method 2 - fallback for Jira Cloud):**
 ```bash
 # Set Jira credentials
 export JIRA_EMAIL=your_email@redhat.com

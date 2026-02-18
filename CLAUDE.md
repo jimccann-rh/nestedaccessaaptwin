@@ -271,15 +271,29 @@ ansible-playbook playbooks/main.yml \
 - Ticket closure runs in `post_tasks` section of `main.yml`
 
 **Authentication:**
-Requires API token authentication with email:
-- Local CLI runs: Set `JIRA_EMAIL` and `JIRA_API_TOKEN` environment variables
-- AAP job execution: Use AAP custom credential that injects `jira_email_credential` and `jira_api_token_credential`
-- Base URL: Defaults to `https://issues.redhat.com`, override with `JIRA_BASE_URL`
+Supports two authentication methods (checked in priority order):
 
-**To get a Jira API token:**
-1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
-2. Click "Create API token"
-3. Copy the token and set it as `JIRA_API_TOKEN` environment variable
+1. **Personal Access Token (PAT) - RECOMMENDED** for Red Hat Jira / Jira Data Center:
+   - Local CLI runs: Set `JIRA_PAT` environment variable
+   - AAP job execution: Use AAP custom credential that injects `jira_pat_credential`
+   - Simpler and more secure - only one credential needed
+   - **To get a PAT for Red Hat Jira:**
+     - Go to https://issues.redhat.com
+     - Click your profile → Personal Access Tokens
+     - Click "Create token"
+     - Copy the token and set it as `JIRA_PAT` environment variable
+
+2. **Email + API Token** (fallback) for Jira Cloud or if PAT not available:
+   - Local CLI runs: Set `JIRA_EMAIL` and `JIRA_API_TOKEN` environment variables
+   - AAP job execution: Use AAP custom credential that injects `jira_email_credential` and `jira_api_token_credential`
+   - **To get an API token for Jira Cloud:**
+     - Go to https://id.atlassian.com/manage-profile/security/api-tokens
+     - Click "Create API token"
+     - Copy the token and set it as `JIRA_API_TOKEN` environment variable
+
+Base URL: Defaults to `https://issues.redhat.com`, override with `JIRA_BASE_URL`
+
+**Note:** If `JIRA_PAT` is set, it will be used and email+token will be ignored.
 
 **Error Handling:**
 - Jira integration uses "warn and continue" approach
@@ -295,7 +309,16 @@ Jira integration is disabled by default. To ensure it's disabled:
 - Or use tags: `ansible-playbook playbooks/main.yml --skip-tags jira`
 
 **AAP Job Configuration:**
-When running as AAP jobs:
+When running as AAP jobs, choose one authentication method:
+
+**Option 1: PAT (Recommended)**
+1. Create a Custom Credential Type with input: `jira_pat_credential`
+2. Create a Credential using that type with your Jira PAT
+3. Attach to your Job Template
+4. In your Job Template's extra variables, add: `jira_enabled: true`
+5. AAP will inject the credential variable automatically when the job runs
+
+**Option 2: Email + API Token (Fallback)**
 1. Create a Custom Credential Type with inputs: `jira_email_credential`, `jira_api_token_credential`
 2. Create a Credential using that type with your Jira email and API token
 3. Attach to your Job Template
@@ -410,9 +433,12 @@ data/
 **Optional:**
 - `TOWER_USERNAME` / `TOWER_PASSWORD` - Alternative to token auth
 - `TOWER_VERIFY_SSL` - SSL verification (default: true)
-- `JIRA_EMAIL` - Email for Jira API authentication (enables Jira integration)
-- `JIRA_API_TOKEN` - Jira API token (required if JIRA_EMAIL is set)
+- `JIRA_PAT` - Jira Personal Access Token (preferred for Red Hat Jira / Jira Data Center)
+- `JIRA_EMAIL` - Email for Jira API authentication (fallback method, for Jira Cloud)
+- `JIRA_API_TOKEN` - Jira API token (required if JIRA_EMAIL is set, fallback method)
 - `JIRA_BASE_URL` - Jira instance URL (default: https://issues.redhat.com)
+
+**Note:** For Jira authentication, set either `JIRA_PAT` (preferred) OR `JIRA_EMAIL` + `JIRA_API_TOKEN`. If both are set, PAT takes priority.
 
 **AAP Job Execution:**
 
@@ -433,10 +459,13 @@ When running as AAP jobs, these variables are injected automatically by AAP cred
 - `inventory/group_vars/all.yml` automatically uses these if environment variables are not available
 
 *Jira (via custom credential - optional):*
-- `jira_email_credential` - Jira email for API authentication (injected via AAP custom credential)
-- `jira_api_token_credential` - Jira API token (injected via AAP custom credential)
+- **Preferred:** `jira_pat_credential` - Jira Personal Access Token (injected via AAP custom credential)
+  - Used for Red Hat Jira / Jira Data Center
+  - Simpler - only one credential needed
+- **Fallback:** `jira_email_credential` + `jira_api_token_credential` - Email and API token (injected via AAP custom credential)
+  - Used for Jira Cloud or if PAT not available
 - Not set manually - AAP injects these automatically when you attach the Jira custom credential
-- The playbook will use these if `JIRA_EMAIL` and `JIRA_API_TOKEN` environment variables are not available
+- The playbook checks for PAT first, then falls back to email+token if PAT not available
 - **Important:** Even with credentials set, you must also enable Jira with `jira_enabled: true` in job template extra variables
 - If `jira_enabled=false` (default), Jira integration is skipped regardless of credentials
 

@@ -4,15 +4,55 @@
 # This task adds a comment to a Jira ticket documenting user provisioning,
 # then transitions it to a closed state.
 #
+# Supports two authentication methods (checked in priority order):
+#   1. Personal Access Token (PAT): jira_pat
+#   2. Email + API Token: jira_email + jira_api_token
+#
 # Required variables:
 #   - jira_ticket_id: The ticket ID (e.g., DPP-00000)
 #   - jira_base_url: Base Jira URL (e.g., https://issues.redhat.com)
-#   - jira_email: Email for API authentication
-#   - jira_api_token: API token for authentication
 #   - username: Username that was provisioned
 #   - user_email: Email of user that was provisioned
+#
+# Authentication (one of):
+#   - jira_pat: Personal Access Token (preferred for Jira Data Center/Server)
+#   - jira_email + jira_api_token: Email and API token (for Jira Cloud)
 
-- name: "Add comment to Jira ticket {{ jira_ticket_id }}"
+- name: "Determine Jira authentication method for {{ jira_ticket_id }}"
+  ansible.builtin.set_fact:
+    jira_use_pat: "{{ (jira_pat is defined) and (jira_pat | length > 0) }}"
+
+- name: "Debug authentication method for {{ jira_ticket_id }}"
+  ansible.builtin.debug:
+    msg: "Using {{ 'Personal Access Token (PAT)' if jira_use_pat else 'Email + API Token' }} authentication"
+
+# PAT Authentication Method
+- name: "Add comment to Jira ticket {{ jira_ticket_id }} (using PAT)"
+  ansible.builtin.uri:
+    url: "{{ jira_base_url }}/rest/api/2/issue/{{ jira_ticket_id }}/comment"
+    method: POST
+    body_format: json
+    body:
+      body: |
+        User provisioning completed successfully via Ansible automation:
+        * Username: {{ username }}
+        * Email: {{ user_email }}
+        * Twingate user created and added to group
+        * AAP job template execute permissions granted
+
+        Automated by: {{ lookup('env', 'USER') | default('ansible') }}
+        Timestamp: {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
+    status_code: [201]
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{ jira_pat }}"
+  register: jira_comment_result
+  failed_when: false
+  when: jira_use_pat | bool
+  #no_log: "{{ jira_no_log | default(true) }}"
+
+# Email + API Token Authentication Method
+- name: "Add comment to Jira ticket {{ jira_ticket_id }} (using Email + API Token)"
   ansible.builtin.uri:
     url: "{{ jira_base_url }}/rest/api/2/issue/{{ jira_ticket_id }}/comment"
     method: POST
@@ -35,9 +75,27 @@
       Content-Type: "application/json"
   register: jira_comment_result
   failed_when: false
+  when: not (jira_use_pat | bool)
   #no_log: "{{ jira_no_log | default(true) }}"
 
-- name: "Get available transitions for {{ jira_ticket_id }}"
+# Get transitions - PAT
+- name: "Get available transitions for {{ jira_ticket_id }} (using PAT)"
+  ansible.builtin.uri:
+    url: "{{ jira_base_url }}/rest/api/2/issue/{{ jira_ticket_id }}/transitions"
+    method: GET
+    status_code: [200]
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{ jira_pat }}"
+  register: jira_transitions_result
+  failed_when: false
+  when:
+    - jira_use_pat | bool
+    - jira_comment_result.status | default(0) == 201
+  no_log: "{{ jira_no_log | default(true) }}"
+
+# Get transitions - Email + API Token
+- name: "Get available transitions for {{ jira_ticket_id }} (using Email + API Token)"
   ansible.builtin.uri:
     url: "{{ jira_base_url }}/rest/api/2/issue/{{ jira_ticket_id }}/transitions"
     method: GET
@@ -49,7 +107,9 @@
       Content-Type: "application/json"
   register: jira_transitions_result
   failed_when: false
-  when: jira_comment_result.status | default(0) == 201
+  when:
+    - not (jira_use_pat | bool)
+    - jira_comment_result.status | default(0) == 201
   no_log: "{{ jira_no_log | default(true) }}"
 
 - name: "Find close/done transition ID for {{ jira_ticket_id }}"
@@ -66,7 +126,29 @@
     - jira_transitions_result.status | default(0) == 200
     - jira_transitions_result.json.transitions is defined
 
-- name: "Transition {{ jira_ticket_id }} to closed state"
+# Transition to closed - PAT
+- name: "Transition {{ jira_ticket_id }} to closed state (using PAT)"
+  ansible.builtin.uri:
+    url: "{{ jira_base_url }}/rest/api/2/issue/{{ jira_ticket_id }}/transitions"
+    method: POST
+    body_format: json
+    body:
+      transition:
+        id: "{{ close_transition_id }}"
+    status_code: [204]
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{ jira_pat }}"
+  register: jira_transition_result
+  failed_when: false
+  when:
+    - jira_use_pat | bool
+    - close_transition_id is defined
+    - close_transition_id | length > 0
+  no_log: "{{ jira_no_log | default(true) }}"
+
+# Transition to closed - Email + API Token
+- name: "Transition {{ jira_ticket_id }} to closed state (using Email + API Token)"
   ansible.builtin.uri:
     url: "{{ jira_base_url }}/rest/api/2/issue/{{ jira_ticket_id }}/transitions"
     method: POST
@@ -83,6 +165,7 @@
   register: jira_transition_result
   failed_when: false
   when:
+    - not (jira_use_pat | bool)
     - close_transition_id is defined
     - close_transition_id | length > 0
   no_log: "{{ jira_no_log | default(true) }}"
