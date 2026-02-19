@@ -41,7 +41,6 @@
         * AAP job template execute permissions granted
         * Log into AAP under teamplates you should see *nested*
 
-        Automated by: {{ lookup('env', 'USER') | default('ansible') }}
         Timestamp: {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
     status_code: [201]
     headers:
@@ -70,7 +69,6 @@
         * AAP job template execute permissions granted
         * Log into AAP under teamplates you should see *nested*
 
-        Automated by: {{ lookup('env', 'USER') | default('ansible') }}
         Timestamp: {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
     status_code: [201]
     headers:
