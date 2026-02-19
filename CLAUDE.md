@@ -320,12 +320,12 @@ Jira integration is disabled by default. To ensure it's disabled:
 **AAP Job Configuration:**
 When running as AAP jobs, choose one authentication method:
 
-**Option 1: PAT via secret (Recommended for existing AAP credentials)**
-If you already have a custom credential type that injects `secret`:
+**Option 1: PAT via vaultkv_secret (Recommended for existing AAP credentials)**
+If you already have a custom credential type that injects `vaultkv_secret`:
 1. Attach your existing credential to the Job Template
 2. In your Job Template's extra variables, add: `jira_enabled: true`
-3. AAP will automatically use `secret` as the Jira PAT
-4. No code changes needed - the playbook automatically detects `secret`
+3. AAP will automatically use `vaultkv_secret` as the Jira PAT
+4. No code changes needed - the playbook automatically detects `vaultkv_secret`
 
 **Option 2: PAT via jira_pat_credential (Alternative)**
 1. Create a Custom Credential Type with input: `jira_pat_credential`
@@ -475,18 +475,18 @@ When running as AAP jobs, these variables are injected automatically by AAP cred
 - `inventory/group_vars/all.yml` automatically uses these if environment variables are not available
 
 *Jira (via custom credential - optional):*
-- **Most Preferred:** `secret` - Jira Personal Access Token (injected via AAP custom credential)
-  - Used if you have an existing credential type that injects `secret`
+- **Most Preferred:** `vaultkv_secret` - Jira Personal Access Token (injected via AAP custom credential)
+  - Used if you have an existing credential type that injects `vaultkv_secret`
   - Automatically detected and used as Jira PAT
   - No custom credential type creation needed if this already exists
 - **Preferred:** `jira_pat_credential` - Jira Personal Access Token (injected via AAP custom credential)
   - Used for Red Hat Jira / Jira Data Center
   - Simpler - only one credential needed
-  - Used if `secret` is not available
+  - Used if `vaultkv_secret` is not available
 - **Fallback:** `jira_email_credential` + `jira_api_token_credential` - Email and API token (injected via AAP custom credential)
   - Used for Jira Cloud or if PAT not available
 - Not set manually - AAP injects these automatically when you attach the Jira custom credential
-- The playbook checks for credentials in order: `secret` → `jira_pat_credential` → `jira_email_credential` + `jira_api_token_credential`
+- The playbook checks for credentials in order: `vaultkv_secret` → `jira_pat_credential` → `jira_email_credential` + `jira_api_token_credential`
 - **Important:** Even with credentials set, you must also enable Jira with `jira_enabled: true` in job template extra variables
 - If `jira_enabled=false` (default), Jira integration is skipped regardless of credentials
 
