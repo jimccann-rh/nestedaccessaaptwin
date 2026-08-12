@@ -523,18 +523,11 @@ ansible-playbook playbooks/main.yml --check
 
 ## Common Warnings
 
-### AWX Collection Warning
+### Ansible Collection
 
-You may see this warning when running the playbooks:
-```
-[WARNING]: You are using the awx version of this collection but connecting to Red Hat Ansible Automation Platform
-```
-
-**This is normal and can be safely ignored.** The `awx.awx` collection is fully compatible with Red Hat AAP. The warning is informational only - Red Hat prefers the `ansible.controller` collection for AAP, but it requires Red Hat Automation Hub access (subscription required).
-
-To suppress this warning, uncomment the following line in `ansible.cfg`:
-```ini
-warnings_version = False
+This project uses the `ansible.controller` collection for AAP operations and `vmware.vmware_rest` for VMware operations. Install them with:
+```bash
+ansible-galaxy collection install -r requirements.yml
 ```
 
 ## Security Notes

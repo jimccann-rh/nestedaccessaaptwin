@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a combined Ansible automation project that orchestrates user provisioning across two systems:
 
 1. **Twingate** - Zero trust network access platform. Creates users via GraphQL API and assigns them to groups.
-2. **AAP (Ansible Automation Platform)** - Grants job template execute permissions to users via the awx.awx collection.
+2. **AAP (Ansible Automation Platform)** - Grants job template execute permissions to users via the ansible.controller collection.
 
 The typical workflow: provision users in Twingate first, then grant them AAP template access.
 
@@ -196,9 +196,8 @@ Headerless CSV with format: `username,email,DEVQE,First,Last,GroupName,DPP-00000
 ### AAP Integration
 
 **Module Used:**
-- `awx.awx.role` module from the `awx.awx` collection
+- `ansible.controller.role` module from the `ansible.controller` collection
 - Assigns `execute` role on job templates to users
-- Note: `awx.awx` works with both AWX and Red Hat AAP. For official Red Hat AAP deployments, `ansible.controller` is preferred but requires Red Hat Automation Hub access
 
 **Playbooks:**
 - `aap_grant_access.yml` - Standalone playbook for single user
@@ -239,14 +238,12 @@ When adding new operations, follow the existing pattern:
 
 ### Adding New AAP Operations
 
-The AAP integration uses the `awx.awx` collection modules. Common modules:
-- `awx.awx.role` - Manage role assignments (used for execute permissions)
-- `awx.awx.job_template` - Manage templates
-- `awx.awx.job_launch` - Launch jobs
+The AAP integration uses the `ansible.controller` collection modules. Common modules:
+- `ansible.controller.role` - Manage role assignments (used for execute permissions)
+- `ansible.controller.job_template` - Manage templates
+- `ansible.controller.job_launch` - Launch jobs
 
 All use the controller authentication variables from `inventory/group_vars/all.yml`.
-
-**Note:** The warning "You are using the awx version of this collection but connecting to Red Hat Ansible Automation Platform" is informational only. The `awx.awx` collection is fully compatible with AAP.
 
 ### Jira Integration
 

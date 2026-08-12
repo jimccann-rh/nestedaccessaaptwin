@@ -32,7 +32,7 @@
   hosts: localhost
   gather_facts: false
   collections:
-    - awx.awx
+    - ansible.controller
 
   vars_files:
     - ../inventory/group_vars/all.yml

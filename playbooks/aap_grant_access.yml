@@ -26,7 +26,7 @@
 
   gather_facts: false
   collections:
-    - awx.awx
+    - ansible.controller
 
   vars:
     # Single template; from CLI -e or env AAP_TEMPLATE_NAME
@@ -63,7 +63,7 @@
         quiet: true
 
     - name: Grant execute role to user on job template(s)
-      awx.awx.role:
+      ansible.controller.role:
         role: execute
         job_templates: "{{ _templates }}"
         users:
