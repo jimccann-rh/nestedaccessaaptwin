@@ -8,12 +8,9 @@ collections:
     version: ">=8.0.0"
 
   # Required for AAP operations
-  # Using awx.awx (works with both AWX and Red Hat AAP)
-  # Note: For Red Hat AAP, ansible.controller is preferred but requires
-  # Red Hat Automation Hub access. awx.awx works fine and is publicly available.
-  - name: awx.awx
-    version: ">=24.0.0"
+  - name: ansible.controller
+    version: ">=4.0.0"
 
   # Optional - for VMware operations if needed
-  - name: community.vmware
+  - name: vmware.vmware_rest
     version: ">=3.0.0"
